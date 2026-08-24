@@ -14,8 +14,16 @@ cargo check --locked --manifest-path src-tauri\Cargo.toml
 
 Run the desktop app with `npm.cmd run tauri dev`.
 
-Kokoro model setup and complete product documentation will be added after the
-native synthesis gate succeeds. Model files are intentionally excluded from Git.
+## Local Kokoro assets
+
+Model files are intentionally excluded from Git. Development currently uses:
+
+- `models/model_quantized.onnx`
+- `models/voices/af_heart.bin`
+
+Both files come from the official
+`onnx-community/Kokoro-82M-v1.0-ONNX` repository. The release build will bundle
+the required files so normal users do not need to place them manually.
 
 ## Privacy
 

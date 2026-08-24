@@ -12,9 +12,7 @@ dist
 dist-ssr
 target
 src-tauri/target
-models/*.onnx
-models/*.bin
-models/*.json
+models/
 audio-cache/
 *.local
 

@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import "./App.css";
 import {
@@ -18,6 +19,29 @@ function loadTheme(): ThemePreference {
 
 function App() {
   const [theme, setTheme] = useState(loadTheme);
+  const [proofState, setProofState] = useState(
+    "Ready for the local speech proof.",
+  );
+
+  async function proveLocalSpeech() {
+    setProofState("Loading Kokoro and synthesizing locally…");
+    try {
+      const wav = await invoke<ArrayBuffer>("tts_synthesize", {
+        text: "Hello. This is SIREN.",
+        voice: "af_heart",
+        speed: 1,
+      });
+      const url = URL.createObjectURL(new Blob([wav], { type: "audio/wav" }));
+      const audio = new Audio(url);
+      audio.addEventListener("ended", () => URL.revokeObjectURL(url), {
+        once: true,
+      });
+      await audio.play();
+      setProofState("Speaking through the Windows audio output.");
+    } catch (error) {
+      setProofState(String(error));
+    }
+  }
 
   useEffect(() => {
     const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
@@ -80,6 +104,16 @@ function App() {
               </li>
             ))}
           </ul>
+          <button
+            className="proof-button"
+            type="button"
+            onClick={proveLocalSpeech}
+          >
+            Prove local speech
+          </button>
+          <p className="proof-status" role="status">
+            {proofState}
+          </p>
         </section>
       </main>
 
