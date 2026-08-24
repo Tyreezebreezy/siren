@@ -539,7 +539,9 @@ function App() {
             className="primary-control"
             label={primaryLabel}
             icon={playback === "playing" ? "pause" : "play"}
-            disabled={reader.sentences.length === 0 || editing}
+            disabled={
+              reader.sentences.length === 0 || editing || playback === "loading"
+            }
             onClick={primaryAction}
           />
           <ControlButton

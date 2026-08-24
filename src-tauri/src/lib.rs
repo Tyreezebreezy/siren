@@ -2,6 +2,7 @@ mod tts;
 
 use serde::Serialize;
 use tauri::ipc::{InvokeBody, Request, Response};
+use tauri::Manager;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -11,13 +12,9 @@ struct TtsStatus {
 }
 
 #[tauri::command]
-fn tts_status() -> TtsStatus {
-    let model_directory = tts::default_model_directory();
-    let voices = tts::installed_voices(&model_directory);
-    TtsStatus {
-        ready: model_directory.join("model_quantized.onnx").is_file() && !voices.is_empty(),
-        voices,
-    }
+fn tts_status(state: tauri::State<'_, tts::TtsState>) -> TtsStatus {
+    let (ready, voices) = state.status();
+    TtsStatus { ready, voices }
 }
 
 #[tauri::command]
@@ -63,9 +60,11 @@ fn extract_pdf_bytes(bytes: &[u8]) -> Result<String, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .manage(tts::TtsState::from_model_directory(
-            tts::default_model_directory(),
-        ))
+        .setup(|app| {
+            let model_directory = tts::model_directory(app)?;
+            app.manage(tts::TtsState::from_model_directory(model_directory));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             extract_pdf,
             tts_status,

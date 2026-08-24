@@ -3,6 +3,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
+use tauri::{path::BaseDirectory, Manager};
 use tokio::sync::Mutex;
 
 const SAMPLE_RATE: u32 = 24_000;
@@ -47,6 +48,16 @@ impl TtsState {
             .synthesize(text, voice, speed)
             .await?;
         Ok(wav_from_samples(&samples))
+    }
+
+    pub fn status(&self) -> (bool, Vec<String>) {
+        let voices = installed_voices(
+            self.assets
+                .voices
+                .parent()
+                .expect("voice directory has a model directory parent"),
+        );
+        (self.assets.model.is_file() && !voices.is_empty(), voices)
     }
 }
 
@@ -138,6 +149,13 @@ pub fn default_model_directory() -> PathBuf {
                 .expect("src-tauri has a project parent")
                 .join("models")
         })
+}
+
+pub fn model_directory(app: &tauri::App) -> Result<PathBuf, tauri::Error> {
+    if std::env::var_os("SIREN_MODEL_DIR").is_some() || cfg!(debug_assertions) {
+        return Ok(default_model_directory());
+    }
+    app.path().resolve("../models", BaseDirectory::Resource)
 }
 
 pub fn installed_voices(directory: &Path) -> Vec<String> {
