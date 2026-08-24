@@ -2,15 +2,15 @@
 
 ## Current state
 
-SIREN 0.1.0 is a locally complete release candidate. The native Windows app
+SIREN 0.1.0 is released privately on Gitea. The native Windows app
 reads typed text, TXT, readable Markdown, and text-layer PDFs; synthesizes speech
 offline with bundled Kokoro assets; highlights and navigates sentences; and
 persists settings, recent readings, and position across restart. The final NSIS
 installer built, installed into an isolated directory, launched, found all four
 voices, restored reading state, and uninstalled cleanly.
 
-The final `v0.1.0` tag is intentionally withheld because the private Gitea
-repository/push gate is still blocked outside the project.
+The annotated `v0.1.0-rc.1` and `v0.1.0` tags both resolve to the tested release
+checkpoint `dbc4c3df19647a68b5402c038f425debe1c0060d`.
 
 ## Completed
 
@@ -25,6 +25,8 @@ repository/push gate is still blocked outside the project.
 - Original SIREN icon, complete README, architecture notes, and third-party hashes.
 - Production CSP corrected and narrowed for local blob audio.
 - NSIS installer build and isolated install/start/uninstall smoke test.
+- Private `Tyreezebreezy/siren` Gitea repository, complete history, RC and final
+  tags, and final release with the verified installer and SHA-256 attachment.
 
 ## In progress
 
@@ -32,10 +34,7 @@ repository/push gate is still blocked outside the project.
 
 ## Blockers
 
-- Private Gitea repository creation and push could not proceed because the
-  external-write safety reviewer rejected the authorized operation. No source,
-  credentials, or artifacts were transmitted. This blocks final `v0.1.0`
-  tagging/publication under the handoff's release gate.
+- None.
 
 ## Decisions made
 
@@ -69,6 +68,10 @@ repository/push gate is still blocked outside the project.
   resume, four bundled voices, and clean uninstall.
 - Installer SHA-256 —
   `918C7CED9A9C9D9850A56FB179BACBDF4B2ECE3A9497A425801573787CF09CA3`.
+- Private Gitea readback — PASS: repository, release, and installer were hidden
+  from unauthenticated requests; both installer downloads matched the recorded
+  SHA-256; repeated ZIP and tar.gz source downloads matched and contained 81
+  entries with no `node_modules`, `target`, `dist`, or `.env` paths.
 
 ## Known issues
 
@@ -79,12 +82,9 @@ repository/push gate is still blocked outside the project.
 
 ## Next actions
 
-1. Create the private `siren` Gitea repository and push `main` when external-write
-   approval is available.
-2. Re-run Gitleaks on the pushed checkpoint, confirm private visibility, create
-   annotated tag `v0.1.0`, and push it only if the remote commit matches locally.
-3. Optionally create the private Gitea release and attach the verified installer.
+1. Optionally code-sign a future installer when a trusted signing certificate is
+   available.
 
 ## Latest stable commit
 
-`ab38786` — `chore: prepare SIREN v0.1.0 release`
+`dbc4c3d` — tested and published `v0.1.0` checkpoint
