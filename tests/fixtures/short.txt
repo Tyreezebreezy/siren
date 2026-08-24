@@ -1,0 +1,3 @@
+Hello. This is a short SIREN text fixture.
+
+It includes a second paragraph. Can the reader navigate it? Yes, it can.

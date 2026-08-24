@@ -1,0 +1,19 @@
+Section one begins with a quiet morning. The reader opens a local document. No network request is needed. Each sentence enters the queue independently. Playback can begin before the whole document is synthesized.
+
+Section two checks ordinary punctuation. Is the next sentence available? Yes, it is. The current sentence remains highlighted. The reading position advances only after playback ends.
+
+Section three checks navigation. Moving backward stops stale audio. Moving forward updates the highlight. The queue never overlaps two sentences. A new request invalidates the old request identifier.
+
+Section four checks persistence. The selected voice stays on this device. The chosen speed stays on this device. The current sentence index is saved. Reopening the application restores the same document.
+
+Section five checks paragraphs. Blank lines separate these reading units. Line endings normalize consistently. Quotes remain attached to their sentences. Dr. Rivera can appear without splitting the abbreviation incorrectly.
+
+Section six checks speed. A slower setting remains understandable. A faster setting remains within the supported range. Invalid extremes are rejected in Rust. Changing speed safely stops the current audio.
+
+Section seven checks voice selection. Heart is the initial installed voice. Missing voice assets produce a readable error. Voice names cannot contain path separators. The model directory is fixed by the application.
+
+Section eight checks long-document behavior. Parsing completes without synthesizing every sentence. Only the active sentence crosses the Tauri command boundary. The webview stays responsive during inference. Auto-scroll moves only when the highlighted sentence changes.
+
+Section nine checks endings. The final sentence changes playback to ended. Stop preserves the sentence position. Pause preserves the current audio position. Resume continues the same sentence when the audio element supports it.
+
+Section ten completes the fixture. The content is original and contains no private information. It is safe to commit with the repository. Tests may count all fifty sentences. SIREN can now return to the first sentence.
