@@ -2,58 +2,89 @@
 
 ## Current state
 
-The SIREN repository is initialized from The Forge and the first engineering
-gate passes: the Tauri window invokes Rust, Kokoro synthesizes locally, and the
-result plays through the Windows audio output. Reader implementation is next.
+SIREN 0.1.0 is a locally complete release candidate. The native Windows app
+reads typed text, TXT, readable Markdown, and text-layer PDFs; synthesizes speech
+offline with bundled Kokoro assets; highlights and navigates sentences; and
+persists settings, recent readings, and position across restart. The final NSIS
+installer built, installed into an isolated directory, launched, found all four
+voices, restored reading state, and uninstalled cleanly.
+
+The final `v0.1.0` tag is intentionally withheld because the private Gitea
+repository/push gate is still blocked outside the project.
 
 ## Completed
 
-- Environment preflight.
-- Forge baseline inspection.
-- SIREN project baseline and local-only security defaults.
-- Initial dark-first reader design concept.
-- Native `kokoro-en` 0.1.5 integration without Python, PyTorch, or CMake.
-- Quantized Kokoro model plus Heart voice loaded from Git-ignored local assets.
-- Audible `Hello. This is SIREN.` proof through the real Tauri window.
-- Small internal engine boundary, request validation, PCM/WAV encoding, and tests.
+- Forge-derived Tauri 2/React/Rust project at `C:\Dev\siren` with clean Git history.
+- Native `kokoro-en` 0.1.5 inference without Python, PyTorch, CMake, or cloud APIs.
+- Bundled quantized Kokoro model and Bella, Heart, Adam, and Emma voice assets.
+- Sentence parsing, queue, highlighting, auto-scroll, progress, and navigation.
+- Play, sample-level Pause/Resume, Stop, Previous, Next, speed, and voice controls.
+- TXT, readable Markdown, and text-layer PDF import with explicit no-OCR handling.
+- Versioned local settings, eight-reading recent library, and sentence resume.
+- Dark, Light, and System themes; keyboard controls; responsive desktop/mobile UI.
+- Original SIREN icon, complete README, architecture notes, and third-party hashes.
+- Production CSP corrected and narrowed for local blob audio.
+- NSIS installer build and isolated install/start/uninstall smoke test.
 
 ## In progress
 
-- Sentence parsing, queue, reader controls, and highlighting.
+- None in the local v0.1.0 scope.
 
 ## Blockers
 
-- Private Gitea creation/push is pending because the external-write safety
-  reviewer blocked the authorized operation. No source was transmitted.
+- Private Gitea repository creation and push could not proceed because the
+  external-write safety reviewer rejected the authorized operation. No source,
+  credentials, or artifacts were transmitted. This blocks final `v0.1.0`
+  tagging/publication under the handoff's release gate.
 
 ## Decisions made
 
-- Use native Rust/ONNX first; fall back only if the path becomes an architectural dead end.
-- Keep model files outside Git and verify their licenses and hashes.
-- Use sentence-oriented playback and sentence-level resume.
-- Use optimized raw IPC for sentence WAV data rather than JSON sample arrays.
-- Use the browser-native audio element for output to avoid another Rust audio dependency.
+- Use native Rust/ONNX with a small internal `TtsEngine` boundary.
+- Keep model binaries out of Git and bundle verified assets as Tauri resources.
+- Return PCM WAV through raw Tauri IPC and play it with the native webview audio API.
+- Use `Intl.Segmenter` plus common-abbreviation merging instead of heavyweight NLP.
+- Store up to eight normalized readings in versioned local storage; move to SQLite
+  only if measured webview quota becomes a real library-size limit.
+- Use native file inputs and no filesystem/shell plugin permissions.
 
 ## Tests
 
-- `powershell -ExecutionPolicy Bypass -File scripts\validate.ps1` — PASS at baseline.
-- `cargo test --locked --manifest-path src-tauri\Cargo.toml` — PASS, 2 tests.
-- Windows UI proof — PASS: Rust synthesis completed and `audio.play()` resolved.
-- `npm audit` during install — 0 vulnerabilities.
+- `scripts\validate.ps1` — PASS (`SIREN_VALIDATION=PASS`).
+- Prettier, TypeScript, five Node reader/persistence tests, and Vite build — PASS.
+- `cargo test --locked` — PASS, four Rust/TTS/PDF tests.
+- `cargo clippy --locked --all-targets -- -D warnings` — PASS.
+- `npm audit --audit-level=high` — PASS, zero vulnerabilities.
+- Gitleaks — PASS, five commits scanned after final status commit; zero leaks.
+- Trivy with a refreshed database — PASS, zero High/Critical Cargo/npm findings
+  and zero reported secrets in the scoped source scan.
+- Browser QA — PASS at 1440×900 and 390×844, no console warnings/errors or
+  horizontal overflow; current position survived reload; TXT import opened five
+  sentences; Markdown parsing test passed.
+- PDF fixtures — PASS: text PDF extracted; scanned/no-text PDF returned the exact
+  no-OCR message; both fixture pages were rendered and visually inspected.
+- Native TTS proof — PASS through the real Windows audio output.
+- Production executable smoke — PASS: bundled voices discovered, local speech
+  played, highlight stayed aligned, and Pause/Resume worked.
+- Installer smoke — PASS: silent isolated install, installed app launch, reading
+  resume, four bundled voices, and clean uninstall.
+- Installer SHA-256 —
+  `918C7CED9A9C9D9850A56FB179BACBDF4B2ECE3A9497A425801573787CF09CA3`.
 
 ## Known issues
 
-- Forge placeholder icons remain pending replacement.
-- Only the Heart voice is provisioned so far.
-- The lean phonemizer omits bundled eSpeak; broader pronunciation QA is pending.
+- The installer is not code-signed.
+- Initial model load and long-sentence CPU synthesis can take several seconds.
+- OCR, DOCX, EPUB, cloud sync, and audio export are intentionally outside v0.1.0.
+- `cargo-audit` is not installed; the refreshed Trivy scan covered `Cargo.lock`.
 
 ## Next actions
 
-1. Implement the reader queue, navigation, and playback state.
-2. Add document imports and persistence.
-3. Complete visual, accessibility, packaging, and security gates.
-4. Retry private Gitea publication when external-write approval is available.
+1. Create the private `siren` Gitea repository and push `main` when external-write
+   approval is available.
+2. Re-run Gitleaks on the pushed checkpoint, confirm private visibility, create
+   annotated tag `v0.1.0`, and push it only if the remote commit matches locally.
+3. Optionally create the private Gitea release and attach the verified installer.
 
 ## Latest stable commit
 
-`95e8364` — `chore: initialize SIREN from Forge`
+`ab38786` — `chore: prepare SIREN v0.1.0 release`
