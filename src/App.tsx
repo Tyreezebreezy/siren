@@ -220,6 +220,7 @@ function App() {
       debugTts({ phase: "session-cancelled", units: cancelled.length });
     }
     setPlayback("stopped");
+    setMessage("Stopped. Ready to resume.");
   }
 
   function failPlayback(session: number, unit: SpeechUnit, error: unknown) {
