@@ -42,14 +42,7 @@ impl TtsState {
         let lock_started = Instant::now();
         let mut engine = self.engine.lock().await;
         let queue_wait = lock_started.elapsed();
-        if engine.is_none() {
-            let load_started = Instant::now();
-            *engine = Some(TtsEngine::load(&self.assets).await?);
-            debug_tts(format_args!(
-                "model_load_ms={:.1}",
-                load_started.elapsed().as_secs_f64() * 1_000.0
-            ));
-        }
+        load_engine(&mut engine, &self.assets).await?;
 
         let synthesis_started = Instant::now();
         let samples = engine
@@ -71,6 +64,17 @@ impl TtsState {
         Ok(wav_from_samples(&samples))
     }
 
+    pub async fn warmup(&self) -> Result<(), String> {
+        if !self.assets.model.is_file() {
+            return Err(format!(
+                "Kokoro model is missing at {}.",
+                self.assets.model.display()
+            ));
+        }
+        let mut engine = self.engine.lock().await;
+        load_engine(&mut engine, &self.assets).await
+    }
+
     pub fn status(&self) -> (bool, Vec<String>) {
         let voices = installed_voices(
             self.assets
@@ -80,6 +84,18 @@ impl TtsState {
         );
         (self.assets.model.is_file() && !voices.is_empty(), voices)
     }
+}
+
+async fn load_engine(engine: &mut Option<TtsEngine>, assets: &ModelAssets) -> Result<(), String> {
+    if engine.is_none() {
+        let load_started = Instant::now();
+        *engine = Some(TtsEngine::load(assets).await?);
+        debug_tts(format_args!(
+            "model_load_ms={:.1}",
+            load_started.elapsed().as_secs_f64() * 1_000.0
+        ));
+    }
+    Ok(())
 }
 
 fn debug_tts(message: std::fmt::Arguments<'_>) {
@@ -106,6 +122,9 @@ impl ModelAssets {
 
 impl TtsEngine {
     async fn load(assets: &ModelAssets) -> Result<Self, String> {
+        if std::env::var_os("KOKORO_ORT_PROVIDER").is_none() {
+            std::env::set_var("KOKORO_ORT_PROVIDER", "cpu");
+        }
         KokoroTts::new(&assets.model, &assets.voices)
             .await
             .map(Self::Kokoro)
@@ -225,6 +244,7 @@ mod tests {
         for text in [
             "SIREN measures local speech before changing the playback pipeline.",
             "A longer passage shows whether generation remains comfortably faster than real time on ordinary laptop hardware while the model session stays warm.",
+            "Buffered reading combines neighboring sentences into moderate chunks. The current audio starts as soon as it is ready, while the next units synthesize in the background. A bounded queue keeps memory stable and lets Stop, navigation, voice, or speed changes invalidate late results safely.",
         ] {
             let wav = tauri::async_runtime::block_on(state.synthesize(text, "af_heart", 1.0))
                 .expect("local benchmark synthesis should succeed");

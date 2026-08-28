@@ -9,12 +9,15 @@ import {
 } from "react";
 import "./App.css";
 import {
+  buildSpeechChunks,
   documentTitle,
   markdownToReadableText,
   moveSentence,
   parseReaderDocument,
   type DocumentKind,
+  type SpeechChunk,
 } from "./reader";
+import { SessionBuffer } from "./playback";
 import {
   loadState,
   saveState,
@@ -31,8 +34,36 @@ type TtsStatus = {
   voices: string[];
 };
 
+type SpeechUnitState =
+  | "queued"
+  | "generating"
+  | "ready"
+  | "playing"
+  | "completed"
+  | "cancelled"
+  | "failed";
+
+type SpeechUnit = {
+  chunk: SpeechChunk;
+  state: SpeechUnitState;
+};
+
+type BufferedSpeech = {
+  unit: SpeechUnit;
+  wav: ArrayBuffer;
+  audioMs: number;
+  synthesisMs: number;
+};
+
+type PlaybackMetrics = {
+  synthesisMs: number[];
+  transitionMs: number[];
+  underruns: number;
+};
+
 const themeOptions: ThemePreference[] = ["system", "light", "dark"];
 const wavSampleRate = 24_000;
+const readyBufferSize = 3;
 
 function App() {
   const [state, setState] = useState<PersistedState>(loadState);
@@ -48,9 +79,25 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
-  const requestIdRef = useRef(0);
+  const bufferRef = useRef<SessionBuffer<BufferedSpeech> | null>(null);
+  const playbackBuffer = (bufferRef.current ??= new SessionBuffer(
+    readyBufferSize,
+  ));
+  const speechUnitsRef = useRef<SpeechUnit[]>([]);
+  const nextSpeechUnitRef = useRef(0);
+  const producerSessionRef = useRef<number | null>(null);
+  const metricsRef = useRef<PlaybackMetrics>({
+    synthesisMs: [],
+    transitionMs: [],
+    underruns: 0,
+  });
   const playbackStartedAtRef = useRef<number | null>(null);
   const previousAudioEndedAtRef = useRef<number | null>(null);
+  const underrunStartedAtRef = useRef<number | null>(null);
+  const [highlightRange, setHighlightRange] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
 
   const activeDocument =
     state.documents.find(({ id }) => id === state.activeId) ?? null;
@@ -99,6 +146,11 @@ function App() {
             },
           }));
         }
+        if (status.ready) {
+          void invoke("tts_warmup").catch((error) =>
+            debugTts({ phase: "warmup-failed", error: String(error) }),
+          );
+        }
       })
       .catch(() => {
         // Browser-only visual QA has no Tauri command bridge.
@@ -115,7 +167,7 @@ function App() {
 
   useEffect(
     () => () => {
-      requestIdRef.current += 1;
+      playbackBuffer.cancel();
       audioRef.current?.pause();
       if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
     },
@@ -123,7 +175,7 @@ function App() {
   );
 
   function updateSettings(patch: Partial<PersistedState["settings"]>) {
-    stopPlayback();
+    if ("voice" in patch || "speed" in patch) stopPlayback();
     setState((current) => ({
       ...current,
       settings: { ...current.settings, ...patch },
@@ -150,103 +202,240 @@ function App() {
   }
 
   function stopPlayback() {
-    requestIdRef.current += 1;
+    const cancelled = speechUnitsRef.current.filter(
+      ({ state }) => state !== "completed" && state !== "failed",
+    );
+    for (const unit of cancelled) unit.state = "cancelled";
+    playbackBuffer.cancel();
+    producerSessionRef.current = null;
+    speechUnitsRef.current = [];
+    nextSpeechUnitRef.current = 0;
     releaseAudio();
     playbackStartedAtRef.current = null;
     previousAudioEndedAtRef.current = null;
+    underrunStartedAtRef.current = null;
+    setHighlightRange(null);
+    if (cancelled.length > 0) {
+      debugTts({ phase: "session-cancelled", units: cancelled.length });
+    }
     setPlayback("stopped");
   }
 
-  async function playSentence(index: number, requestId: number) {
-    const sentence = reader.sentences[index];
-    if (!sentence || requestId !== requestIdRef.current) return;
-
-    setPlayback("loading");
-    setMessage("Synthesizing locally…");
-    const synthesisStartedAt = performance.now();
+  function failPlayback(session: number, unit: SpeechUnit, error: unknown) {
+    if (!playbackBuffer.isCurrent(session)) return;
+    unit.state = "failed";
+    playbackBuffer.cancel();
+    producerSessionRef.current = null;
+    releaseAudio();
+    setHighlightRange(null);
+    setPlayback("error");
+    setMessage(String(error));
     debugTts({
-      phase: "generation-start",
-      sentenceIndex: index,
-      characters: sentence.text.length,
-      queueDepth: 0,
-      readyUnits: 0,
-      generating: true,
+      phase: "failed",
+      chunkIndex: unit.chunk.index,
+      error: String(error),
     });
-    try {
-      const wav = await invoke<ArrayBuffer>("tts_synthesize", {
-        text: sentence.text,
-        voice: state.settings.voice,
-        speed: state.settings.speed,
-      });
-      if (requestId !== requestIdRef.current) return;
-      const synthesisMs = performance.now() - synthesisStartedAt;
-      const audioMs =
-        (Math.max(0, wav.byteLength - 44) / (wavSampleRate * 2)) * 1_000;
-      debugTts({
-        phase: "generation-ready",
-        sentenceIndex: index,
-        characters: sentence.text.length,
-        synthesisMs: Math.round(synthesisMs),
-        audioMs: Math.round(audioMs),
-        rtf: Number((synthesisMs / Math.max(audioMs, 1)).toFixed(3)),
-        queueDepth: 0,
-        readyUnits: 1,
-        generating: false,
-      });
+  }
 
-      releaseAudio();
-      const url = URL.createObjectURL(new Blob([wav], { type: "audio/wav" }));
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audioUrlRef.current = url;
-      audio.addEventListener(
-        "ended",
-        () => {
-          if (requestId !== requestIdRef.current) return;
-          previousAudioEndedAtRef.current = performance.now();
-          const next = index + 1;
-          if (next >= reader.sentences.length) {
-            releaseAudio();
-            setPlayback("ended");
-            setMessage("End of document.");
-            return;
-          }
-          setPosition(next);
-          void playSentence(next, requestId);
-        },
-        { once: true },
-      );
-      audio.addEventListener(
-        "error",
-        () => {
-          setPlayback("error");
-          setMessage("Windows could not play the synthesized audio.");
-        },
-        { once: true },
-      );
+  function finishPlayback(unit: SpeechUnit) {
+    unit.state = "completed";
+    setPosition(unit.chunk.endSentence);
+    setHighlightRange(null);
+    setPlayback("ended");
+    setMessage("End of document.");
+    const transitions = metricsRef.current.transitionMs;
+    debugTts({
+      phase: "session-summary",
+      averageTransitionMs:
+        transitions.length === 0
+          ? null
+          : Math.round(
+              transitions.reduce((total, value) => total + value, 0) /
+                transitions.length,
+            ),
+      worstTransitionMs:
+        transitions.length === 0 ? null : Math.round(Math.max(...transitions)),
+      bufferUnderruns: metricsRef.current.underruns,
+      averageSynthesisMs: Math.round(
+        metricsRef.current.synthesisMs.reduce(
+          (total, value) => total + value,
+          0,
+        ) / Math.max(1, metricsRef.current.synthesisMs.length),
+      ),
+    });
+  }
+
+  async function playNextReady(session: number, voice: string, speed: number) {
+    if (!playbackBuffer.isCurrent(session) || audioRef.current) return;
+    const buffered = playbackBuffer.dequeue(session);
+    if (!buffered) {
+      if (
+        nextSpeechUnitRef.current < speechUnitsRef.current.length ||
+        producerSessionRef.current === session
+      ) {
+        if (
+          previousAudioEndedAtRef.current !== null &&
+          underrunStartedAtRef.current === null
+        ) {
+          underrunStartedAtRef.current = performance.now();
+          metricsRef.current.underruns += 1;
+        }
+        setPlayback("loading");
+        setMessage("Buffering locally…");
+        void fillBuffer(session, voice, speed);
+      }
+      return;
+    }
+
+    const { unit, wav } = buffered;
+    unit.state = "playing";
+    setPosition(unit.chunk.startSentence);
+    setHighlightRange({
+      start: unit.chunk.startSentence,
+      end: unit.chunk.endSentence,
+    });
+    releaseAudio();
+    const url = URL.createObjectURL(new Blob([wav], { type: "audio/wav" }));
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    audioUrlRef.current = url;
+    audio.addEventListener(
+      "ended",
+      () => {
+        if (!playbackBuffer.isCurrent(session)) return;
+        unit.state = "completed";
+        previousAudioEndedAtRef.current = performance.now();
+        releaseAudio();
+        if (unit.chunk.endSentence >= reader.sentences.length - 1) {
+          finishPlayback(unit);
+          return;
+        }
+        void playNextReady(session, voice, speed);
+        void fillBuffer(session, voice, speed);
+      },
+      { once: true },
+    );
+    audio.addEventListener(
+      "error",
+      () =>
+        failPlayback(
+          session,
+          unit,
+          "Windows could not play the synthesized audio.",
+        ),
+      { once: true },
+    );
+
+    try {
       await audio.play();
+      if (!playbackBuffer.isCurrent(session)) return;
       const now = performance.now();
+      const transitionMs =
+        previousAudioEndedAtRef.current === null
+          ? null
+          : now - previousAudioEndedAtRef.current;
+      if (transitionMs !== null) {
+        metricsRef.current.transitionMs.push(transitionMs);
+      }
+      underrunStartedAtRef.current = null;
       debugTts({
-        phase: "playback-start",
-        sentenceIndex: index,
+        phase: "playing",
+        chunkIndex: unit.chunk.index,
+        sentenceIndexes: [unit.chunk.startSentence, unit.chunk.endSentence],
         playbackStartLatencyMs:
           playbackStartedAtRef.current === null
             ? null
             : Math.round(now - playbackStartedAtRef.current),
         transitionDelayMs:
-          previousAudioEndedAtRef.current === null
-            ? null
-            : Math.round(now - previousAudioEndedAtRef.current),
-        queueDepth: 0,
-        readyUnits: 0,
-        generating: false,
+          transitionMs === null ? null : Math.round(transitionMs),
+        queueDepth: playbackBuffer.size,
+        readyUnits: playbackBuffer.size,
+        generating: producerSessionRef.current === session,
       });
       setPlayback("playing");
       setMessage("Reading locally.");
     } catch (error) {
-      if (requestId !== requestIdRef.current) return;
-      setPlayback("error");
-      setMessage(String(error));
+      failPlayback(session, unit, error);
+    }
+  }
+
+  async function fillBuffer(session: number, voice: string, speed: number) {
+    if (
+      !playbackBuffer.isCurrent(session) ||
+      producerSessionRef.current === session
+    ) {
+      return;
+    }
+    producerSessionRef.current = session;
+    try {
+      while (
+        playbackBuffer.isCurrent(session) &&
+        playbackBuffer.size < playbackBuffer.capacity &&
+        nextSpeechUnitRef.current < speechUnitsRef.current.length
+      ) {
+        const unit = speechUnitsRef.current[nextSpeechUnitRef.current++];
+        unit.state = "generating";
+        const synthesisStartedAt = performance.now();
+        debugTts({
+          phase: "generating",
+          chunkIndex: unit.chunk.index,
+          sentenceIndexes: [unit.chunk.startSentence, unit.chunk.endSentence],
+          characters: unit.chunk.text.length,
+          queueDepth: playbackBuffer.size,
+          readyUnits: playbackBuffer.size,
+          generating: true,
+        });
+        let wav: ArrayBuffer;
+        try {
+          wav = await invoke<ArrayBuffer>("tts_synthesize", {
+            text: unit.chunk.text,
+            voice,
+            speed,
+          });
+        } catch (error) {
+          failPlayback(session, unit, error);
+          return;
+        }
+        if (!playbackBuffer.isCurrent(session)) {
+          unit.state = "cancelled";
+          return;
+        }
+        const synthesisMs = performance.now() - synthesisStartedAt;
+        const audioMs =
+          (Math.max(0, wav.byteLength - 44) / (wavSampleRate * 2)) * 1_000;
+        metricsRef.current.synthesisMs.push(synthesisMs);
+        unit.state = "ready";
+        if (
+          !playbackBuffer.enqueue(session, {
+            unit,
+            wav,
+            audioMs,
+            synthesisMs,
+          })
+        ) {
+          unit.state = "cancelled";
+          return;
+        }
+        debugTts({
+          phase: "ready",
+          chunkIndex: unit.chunk.index,
+          sentenceIndexes: [unit.chunk.startSentence, unit.chunk.endSentence],
+          characters: unit.chunk.text.length,
+          synthesisMs: Math.round(synthesisMs),
+          audioMs: Math.round(audioMs),
+          rtf: Number((synthesisMs / Math.max(audioMs, 1)).toFixed(3)),
+          queueDepth: playbackBuffer.size,
+          readyUnits: playbackBuffer.size,
+          generating: false,
+        });
+        if (!audioRef.current) {
+          await playNextReady(session, voice, speed);
+        }
+      }
+    } finally {
+      if (producerSessionRef.current === session) {
+        producerSessionRef.current = null;
+      }
     }
   }
 
@@ -262,10 +451,30 @@ function App() {
       });
       return;
     }
-    const requestId = ++requestIdRef.current;
+    if (playback === "playing" || playback === "loading") return;
+    const chunks = buildSpeechChunks(reader.sentences, currentIndex);
+    if (chunks.length === 0) return;
+    const session = playbackBuffer.begin();
+    speechUnitsRef.current = chunks.map((chunk) => ({
+      chunk,
+      state: "queued",
+    }));
+    nextSpeechUnitRef.current = 0;
+    metricsRef.current = { synthesisMs: [], transitionMs: [], underruns: 0 };
     playbackStartedAtRef.current = performance.now();
     previousAudioEndedAtRef.current = null;
-    void playSentence(currentIndex, requestId);
+    underrunStartedAtRef.current = null;
+    setPlayback("loading");
+    setMessage("Preparing local speech…");
+    debugTts({
+      phase: "session-start",
+      session,
+      chunks: chunks.length,
+      readyTarget: playbackBuffer.capacity,
+      voice: state.settings.voice,
+      speed: state.settings.speed,
+    });
+    void fillBuffer(session, state.settings.voice, state.settings.speed);
   }
 
   function pause() {
@@ -549,7 +758,15 @@ function App() {
                 {paragraph.sentences.map((sentence) => (
                   <span
                     id={`sentence-${sentence.index}`}
-                    className={sentence.index === currentIndex ? "current" : ""}
+                    className={
+                      (highlightRange === null &&
+                        sentence.index === currentIndex) ||
+                      (highlightRange !== null &&
+                        sentence.index >= highlightRange.start &&
+                        sentence.index <= highlightRange.end)
+                        ? "current"
+                        : ""
+                    }
                     aria-current={
                       sentence.index === currentIndex ? "true" : undefined
                     }

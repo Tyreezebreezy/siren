@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { normalizeState } from "../src/persistence.ts";
 import {
+  buildSpeechChunks,
   markdownToReadableText,
   moveSentence,
   parseReaderDocument,
@@ -44,4 +45,28 @@ test("long documents parse incrementally into the expected queue", () => {
     "utf8",
   );
   assert.equal(parseReaderDocument(text).sentences.length, 50);
+});
+
+test("speech chunks combine short neighbors without crossing paragraphs", () => {
+  const document = parseReaderDocument(
+    "One short sentence. Two stays beside it. Three completes the group.\n\nA new paragraph starts here. This sentence is deliberately long enough to stand alone when the chunk limit is small.",
+  );
+  const chunks = buildSpeechChunks(document.sentences, 0, 90);
+  assert.deepEqual(
+    chunks.map(({ startSentence, endSentence }) => [
+      startSentence,
+      endSentence,
+    ]),
+    [
+      [0, 2],
+      [3, 3],
+      [4, 4],
+    ],
+  );
+  assert.equal(
+    chunks.map(({ text }) => text).join(" "),
+    document.sentences.map(({ text }) => text).join(" "),
+  );
+  assert.deepEqual(buildSpeechChunks([], 0), []);
+  assert.equal(buildSpeechChunks(document.sentences, 2)[0].startSentence, 2);
 });

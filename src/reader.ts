@@ -16,6 +16,13 @@ export type ReaderDocument = {
   sentences: ReaderSentence[];
 };
 
+export type SpeechChunk = {
+  index: number;
+  startSentence: number;
+  endSentence: number;
+  text: string;
+};
+
 const sentenceSegmenter = new Intl.Segmenter("en", {
   granularity: "sentence",
 });
@@ -74,6 +81,44 @@ export function markdownToReadableText(markdown: string): string {
 
 export function moveSentence(index: number, delta: number, count: number) {
   return Math.max(0, Math.min(Math.max(0, count - 1), index + delta));
+}
+
+export function buildSpeechChunks(
+  sentences: ReaderSentence[],
+  startSentence = 0,
+  maxCharacters = 300,
+): SpeechChunk[] {
+  const chunks: SpeechChunk[] = [];
+  let current: ReaderSentence[] = [];
+
+  const flush = () => {
+    if (current.length === 0) return;
+    chunks.push({
+      index: chunks.length,
+      startSentence: current[0].index,
+      endSentence: current[current.length - 1].index,
+      text: current.map(({ text }) => text).join(" "),
+    });
+    current = [];
+  };
+
+  for (const sentence of sentences.slice(Math.max(0, startSentence))) {
+    const combinedLength =
+      current.reduce((total, item) => total + item.text.length, 0) +
+      current.length +
+      sentence.text.length;
+    if (
+      current.length > 0 &&
+      (sentence.paragraphIndex !== current[0].paragraphIndex ||
+        combinedLength > maxCharacters)
+    ) {
+      flush();
+    }
+    current.push(sentence);
+    if (sentence.text.length >= maxCharacters) flush();
+  }
+  flush();
+  return chunks;
 }
 
 export function documentTitle(filename: string) {
