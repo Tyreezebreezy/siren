@@ -2,7 +2,8 @@
 
 ## Current state
 
-SIREN 0.1.0 is released privately on Gitea. The native Windows app
+SIREN 0.1.0 remains the released private Gitea checkpoint. Work on the focused
+v0.1.1 performance and laptop-UX release candidate is in progress. The native app
 reads typed text, TXT, readable Markdown, and text-layer PDFs; synthesizes speech
 offline with bundled Kokoro assets; highlights and navigates sentences; and
 persists settings, recent readings, and position across restart. The final NSIS
@@ -11,6 +12,20 @@ voices, restored reading state, and uninstalled cleanly.
 
 The annotated `v0.1.0-rc.1` and `v0.1.0` tags both resolve to the tested release
 checkpoint `dbc4c3df19647a68b5402c038f425debe1c0060d`.
+
+## Performance measurements
+
+- Baseline automatic-provider run: model load 8,007.6 ms; 66 characters took
+  6,163.6 ms for 4,500 ms audio (RTF 1.370); the warm 147-character request took
+  8,798.8 ms for 9,975 ms audio (RTF 0.882).
+- Baseline explicit-CPU run: model load 2,179.3 ms; 66 characters took 5,486.1 ms
+  for 4,500 ms audio (RTF 1.219); the warm 147-character request took 7,594.7 ms
+  for 9,975 ms audio (RTF 0.761).
+- The automatic run attempted unavailable CUDA and incompatible DirectML before
+  rebuilding on CPU. The installed Kokoro crate supports an explicit CPU provider.
+- Application transition delay and buffer-underrun measurements are pending the
+  native long-form QA pass. The baseline code starts the next synthesis only after
+  the current audio `ended` event.
 
 ## Completed
 
@@ -30,7 +45,8 @@ checkpoint `dbc4c3df19647a68b5402c038f425debe1c0060d`.
 
 ## In progress
 
-- None in the local v0.1.0 scope.
+- Buffered synthesis, cancellation, chunking, laptop layout, branding, regression,
+  and v0.1.1 RC packaging.
 
 ## Blockers
 
@@ -82,8 +98,9 @@ checkpoint `dbc4c3df19647a68b5402c038f425debe1c0060d`.
 
 ## Next actions
 
-1. Optionally code-sign a future installer when a trusted signing certificate is
-   available.
+1. Apply the measured CPU startup optimization and bounded playback prefetch.
+2. Verify long-form playback and laptop layouts, then run release gates and package
+   `v0.1.1-rc.1` if no blocker remains.
 
 ## Latest stable commit
 

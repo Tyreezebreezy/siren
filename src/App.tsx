@@ -32,6 +32,7 @@ type TtsStatus = {
 };
 
 const themeOptions: ThemePreference[] = ["system", "light", "dark"];
+const wavSampleRate = 24_000;
 
 function App() {
   const [state, setState] = useState<PersistedState>(loadState);
@@ -48,6 +49,8 @@ function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const requestIdRef = useRef(0);
+  const playbackStartedAtRef = useRef<number | null>(null);
+  const previousAudioEndedAtRef = useRef<number | null>(null);
 
   const activeDocument =
     state.documents.find(({ id }) => id === state.activeId) ?? null;
@@ -149,6 +152,8 @@ function App() {
   function stopPlayback() {
     requestIdRef.current += 1;
     releaseAudio();
+    playbackStartedAtRef.current = null;
+    previousAudioEndedAtRef.current = null;
     setPlayback("stopped");
   }
 
@@ -158,6 +163,15 @@ function App() {
 
     setPlayback("loading");
     setMessage("Synthesizing locally…");
+    const synthesisStartedAt = performance.now();
+    debugTts({
+      phase: "generation-start",
+      sentenceIndex: index,
+      characters: sentence.text.length,
+      queueDepth: 0,
+      readyUnits: 0,
+      generating: true,
+    });
     try {
       const wav = await invoke<ArrayBuffer>("tts_synthesize", {
         text: sentence.text,
@@ -165,6 +179,20 @@ function App() {
         speed: state.settings.speed,
       });
       if (requestId !== requestIdRef.current) return;
+      const synthesisMs = performance.now() - synthesisStartedAt;
+      const audioMs =
+        (Math.max(0, wav.byteLength - 44) / (wavSampleRate * 2)) * 1_000;
+      debugTts({
+        phase: "generation-ready",
+        sentenceIndex: index,
+        characters: sentence.text.length,
+        synthesisMs: Math.round(synthesisMs),
+        audioMs: Math.round(audioMs),
+        rtf: Number((synthesisMs / Math.max(audioMs, 1)).toFixed(3)),
+        queueDepth: 0,
+        readyUnits: 1,
+        generating: false,
+      });
 
       releaseAudio();
       const url = URL.createObjectURL(new Blob([wav], { type: "audio/wav" }));
@@ -175,6 +203,7 @@ function App() {
         "ended",
         () => {
           if (requestId !== requestIdRef.current) return;
+          previousAudioEndedAtRef.current = performance.now();
           const next = index + 1;
           if (next >= reader.sentences.length) {
             releaseAudio();
@@ -196,6 +225,22 @@ function App() {
         { once: true },
       );
       await audio.play();
+      const now = performance.now();
+      debugTts({
+        phase: "playback-start",
+        sentenceIndex: index,
+        playbackStartLatencyMs:
+          playbackStartedAtRef.current === null
+            ? null
+            : Math.round(now - playbackStartedAtRef.current),
+        transitionDelayMs:
+          previousAudioEndedAtRef.current === null
+            ? null
+            : Math.round(now - previousAudioEndedAtRef.current),
+        queueDepth: 0,
+        readyUnits: 0,
+        generating: false,
+      });
       setPlayback("playing");
       setMessage("Reading locally.");
     } catch (error) {
@@ -218,6 +263,8 @@ function App() {
       return;
     }
     const requestId = ++requestIdRef.current;
+    playbackStartedAtRef.current = performance.now();
+    previousAudioEndedAtRef.current = null;
     void playSentence(currentIndex, requestId);
   }
 
@@ -621,6 +668,10 @@ function App() {
       </footer>
     </div>
   );
+}
+
+function debugTts(details: Record<string, unknown>) {
+  if (import.meta.env.DEV) console.debug("[SIREN TTS]", details);
 }
 
 function ControlButton({

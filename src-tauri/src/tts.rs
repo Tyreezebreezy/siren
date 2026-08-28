@@ -2,6 +2,7 @@ use kokoro_en::{KokoroTts, Voice};
 use std::{
     fs,
     path::{Path, PathBuf},
+    time::Instant,
 };
 use tauri::{path::BaseDirectory, Manager};
 use tokio::sync::Mutex;
@@ -37,16 +38,36 @@ impl TtsState {
         validate_request(text, voice, speed)?;
         self.assets.validate(voice)?;
 
+        let request_started = Instant::now();
+        let lock_started = Instant::now();
         let mut engine = self.engine.lock().await;
+        let queue_wait = lock_started.elapsed();
         if engine.is_none() {
+            let load_started = Instant::now();
             *engine = Some(TtsEngine::load(&self.assets).await?);
+            debug_tts(format_args!(
+                "model_load_ms={:.1}",
+                load_started.elapsed().as_secs_f64() * 1_000.0
+            ));
         }
 
+        let synthesis_started = Instant::now();
         let samples = engine
             .as_ref()
             .expect("engine initialized above")
             .synthesize(text, voice, speed)
             .await?;
+        let synthesis_seconds = synthesis_started.elapsed().as_secs_f64();
+        let audio_seconds = samples.len() as f64 / SAMPLE_RATE as f64;
+        debug_tts(format_args!(
+            "chars={} queue_wait_ms={:.1} synthesis_ms={:.1} audio_ms={:.1} rtf={:.3} total_ms={:.1}",
+            text.chars().count(),
+            queue_wait.as_secs_f64() * 1_000.0,
+            synthesis_seconds * 1_000.0,
+            audio_seconds * 1_000.0,
+            synthesis_seconds / audio_seconds.max(f64::EPSILON),
+            request_started.elapsed().as_secs_f64() * 1_000.0,
+        ));
         Ok(wav_from_samples(&samples))
     }
 
@@ -59,6 +80,11 @@ impl TtsState {
         );
         (self.assets.model.is_file() && !voices.is_empty(), voices)
     }
+}
+
+fn debug_tts(message: std::fmt::Arguments<'_>) {
+    #[cfg(debug_assertions)]
+    eprintln!("[SIREN TTS] {message}");
 }
 
 impl ModelAssets {
@@ -190,5 +216,19 @@ mod tests {
     fn rejects_invalid_speed_and_voice_paths() {
         assert!(validate_request("Hello", "../voice", 1.0).is_err());
         assert!(validate_request("Hello", "af_heart", 2.1).is_err());
+    }
+
+    #[test]
+    #[ignore = "requires local Kokoro model assets"]
+    fn benchmarks_local_kokoro() {
+        let state = TtsState::from_model_directory(default_model_directory());
+        for text in [
+            "SIREN measures local speech before changing the playback pipeline.",
+            "A longer passage shows whether generation remains comfortably faster than real time on ordinary laptop hardware while the model session stays warm.",
+        ] {
+            let wav = tauri::async_runtime::block_on(state.synthesize(text, "af_heart", 1.0))
+                .expect("local benchmark synthesis should succeed");
+            assert!(wav.len() > 44);
+        }
     }
 }
