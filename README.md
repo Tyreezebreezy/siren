@@ -1,12 +1,13 @@
 # SIREN
 
-SIREN 0.1.0 is a local-first Windows text-to-speech reader built with Tauri 2,
+SIREN 0.1.1 is a local-first Windows text-to-speech reader built with Tauri 2,
 React, TypeScript, and Rust. It reads typed or pasted text plus TXT, Markdown,
 and text-based PDF documents with local Kokoro speech synthesis. No cloud TTS
 API, account, or network connection is required during normal use.
 
 ## Features
 
+- Buffered local speech with bounded lookahead and near-instant chunk transitions.
 - Sentence-oriented Play, Pause/Resume, Stop, Previous, and Next controls.
 - Current-sentence highlighting, progress, and optional auto-scroll.
 - Four bundled Kokoro voices: Bella, Heart, Adam, and Emma.
@@ -24,7 +25,7 @@ API, account, or network connection is required during normal use.
 - `.pdf`: PDFs with an extractable text layer, up to 50 MB.
 
 Scanned/image-only PDFs are not supported and show an explicit no-OCR message.
-DOCX, EPUB, OCR, voice cloning, cloud sync, and audio export are outside 0.1.0.
+DOCX, EPUB, OCR, voice cloning, cloud sync, and audio export are outside 0.1.1.
 
 ## Development
 
@@ -71,13 +72,17 @@ installer compression. Release artifacts are build output and are not committed.
 
 SIREN stores settings and up to eight recent reading bodies in the app webview's
 versioned local storage. Keeping the normalized text locally lets a reading
-resume even if its source file is later moved. The 0.1.0 storage ceiling is the
+resume even if its source file is later moved. The 0.1.1 storage ceiling is the
 webview's local quota; SQLite is the upgrade path if book-scale libraries exceed
 it. Documents and synthesized audio are not sent to a remote service.
 
 ## Known limitations
 
-- First speech after launch loads the model and can take several seconds on CPU.
+- First speech after launch can take several seconds on CPU while its first
+  150–350-character chunk is synthesized.
+- Adjacent sentences may share one audio chunk. Navigation and resume remain
+  sentence-indexed; highlighting covers the active chunk because Kokoro does not
+  provide sentence timestamps.
 - PDF extraction follows the embedded text order and does not perform OCR.
 - Pause resumes the current audio sample; Stop preserves the sentence position.
 - Sentence segmentation uses the native `Intl.Segmenter` plus common English

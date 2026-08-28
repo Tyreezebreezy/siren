@@ -10,17 +10,17 @@ and local blob audio without remote content.
 
 ## TTS
 
-The frontend invokes one narrow command with one sentence, voice, and speed.
-Rust validates length, speed, and the voice identifier before routing the request
-through `TtsEngine`, currently the single native Kokoro ONNX variant. This small
-engine boundary allows another implementation later without a plugin framework.
+The frontend invokes one narrow command with a bounded text chunk, voice, and
+speed. Rust validates length, speed, and the voice identifier before routing the
+request through `TtsEngine`, currently the single native Kokoro ONNX variant.
 
-The loaded engine is reused behind an asynchronous mutex. Synthesized 24 kHz
+The loaded engine is reused behind an asynchronous mutex and warmed after app
+startup. CPU is the stable default execution provider unless development
+explicitly selects another provider. Synthesized 24 kHz
 mono samples are encoded as PCM WAV and returned using Tauri's raw binary IPC
 response, then played by the webview's native `Audio` element. A monotonically
-increasing request id prevents stale synthesis results from playing after Stop,
-navigation, edits, or document changes. Play is disabled during synthesis to
-avoid duplicate work.
+increasing session id prevents stale synthesis results from playing after Stop,
+navigation, settings changes, edits, or document changes.
 
 Development reads Git-ignored assets from `models/` or `SIREN_MODEL_DIR`.
 Production resolves the same fixed filenames from Tauri's bundled resource
@@ -30,15 +30,18 @@ directory. The webview cannot supply a model path.
 
 TXT, readable Markdown, and text-based PDF bytes normalize into paragraphs and
 sentences. `Intl.Segmenter` provides native sentence boundaries; a small merge
-step handles common abbreviations such as `Dr.`. The current sentence index is
-the source of truth for synthesis, highlighting, navigation, progress, and
-resume. Only the current sentence is synthesized, so a long document does not
-require whole-document audio generation.
+step handles common abbreviations such as `Dr.`. The current sentence index
+remains the source of truth for navigation, progress, and resume. Adjacent short
+sentences may be combined into speech chunks of up to 300 characters without crossing
+paragraph boundaries. A producer synthesizes ahead while a consumer plays one
+chunk at a time; the ready queue is capped at three chunks, and completed audio
+is released immediately.
 
 The audio element implements sample-level Pause/Resume. Stop releases the blob
-URL and keeps the current sentence. Previous/Next cancel the active request and
-move one bounded queue position. Highlighted elements scroll into view only when
-auto-scroll is enabled.
+URL and keeps the stable sentence position. Previous/Next move one sentence and
+invalidate the old session. Voice and speed changes use the same invalidation
+path. Kokoro does not expose sentence timestamps, so all sentences in the active
+chunk are highlighted together rather than using fake intra-chunk timing.
 
 ## Documents
 
