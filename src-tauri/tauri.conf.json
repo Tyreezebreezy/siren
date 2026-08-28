@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "SIREN",
-        "width": 1440,
-        "height": 900,
+        "width": 1200,
+        "height": 720,
         "minWidth": 760,
         "minHeight": 560
       }

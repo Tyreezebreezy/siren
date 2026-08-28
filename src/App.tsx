@@ -70,6 +70,7 @@ function App() {
   const [editing, setEditing] = useState(!state.activeId);
   const [draftName, setDraftName] = useState("Untitled");
   const [draftText, setDraftText] = useState("");
+  const [libraryExpanded, setLibraryExpanded] = useState(false);
   const [message, setMessage] = useState("Ready.");
   const [playback, setPlayback] = useState<PlaybackState>("idle");
   const [tts, setTts] = useState<TtsStatus>({
@@ -491,6 +492,7 @@ function App() {
 
   function openDocument(document: LibraryDocument) {
     stopPlayback();
+    setLibraryExpanded(false);
     setEditing(false);
     setState((current) => ({
       ...current,
@@ -641,15 +643,25 @@ function App() {
         : "Play";
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${libraryExpanded ? " library-expanded" : ""}`}>
       <header className="app-header">
         <button className="brand" type="button" onClick={beginNewText}>
           <span className="brand-mark" aria-hidden="true">
-            S
+            <BrandMark />
           </span>
           <span>SIREN</span>
         </button>
         <div className="document-actions">
+          <button
+            className="library-toggle"
+            type="button"
+            aria-controls="recent-library"
+            aria-expanded={libraryExpanded}
+            onClick={() => setLibraryExpanded((expanded) => !expanded)}
+          >
+            <Icon name="library" />
+            Recent
+          </button>
           <button type="button" onClick={() => fileInputRef.current?.click()}>
             <Icon name="folder" />
             Open document
@@ -691,7 +703,11 @@ function App() {
         </fieldset>
       </header>
 
-      <aside className="library" aria-label="Recent documents">
+      <aside
+        id="recent-library"
+        className="library"
+        aria-label="Recent documents"
+      >
         <h2>Recent</h2>
         <div className="recent-list">
           {state.documents.length === 0 ? (
@@ -704,6 +720,7 @@ function App() {
                 className={document.id === state.activeId ? "active" : ""}
                 type="button"
                 key={document.id}
+                title={document.name}
                 onClick={() => openDocument(document)}
               >
                 <Icon name="document" />
@@ -739,6 +756,7 @@ function App() {
             </div>
             <textarea
               autoFocus
+              rows={6}
               aria-label="Text to read"
               placeholder="Paste an article, notes, or any text you want SIREN to read aloud…"
               value={draftText}
@@ -922,6 +940,7 @@ function ControlButton({
 type IconName =
   | "document"
   | "folder"
+  | "library"
   | "next"
   | "pause"
   | "play"
@@ -933,6 +952,7 @@ function Icon({ name }: { name: IconName }) {
   const paths: Record<IconName, ReactNode> = {
     document: <path d="M6 3h7l5 5v13H6zM13 3v5h5M9 13h6M9 17h6" />,
     folder: <path d="M3 7h7l2 2h9l-2 10H4zM3 7V5h7l2 2" />,
+    library: <path d="M4 5h16v14H4zM8 5v14M11 9h6M11 13h6" />,
     next: <path d="m5 5 9 7-9 7zM17 5v14" />,
     pause: <path d="M7 5h3v14H7zM14 5h3v14h-3z" />,
     play: <path d="m8 5 11 7-11 7z" />,
@@ -943,6 +963,15 @@ function Icon({ name }: { name: IconName }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
       {paths[name]}
+    </svg>
+  );
+}
+
+function BrandMark() {
+  return (
+    <svg viewBox="0 0 32 32">
+      <rect width="32" height="32" rx="7" />
+      <path d="M23.5 7.5h-9c-3.4 0-5.8 2-5.8 4.7s2.4 4.7 5.8 4.7h3c3.4 0 5.8 2 5.8 4.7s-2.4 4.7-5.8 4.7h-9" />
     </svg>
   );
 }
