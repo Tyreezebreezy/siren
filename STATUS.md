@@ -82,11 +82,19 @@ recent library were exercised at both sizes.
 
 ## Final commit
 
-See the annotated `v1.0.0` tag and `git log` for the exact release commit hash.
+`2f4f10845ae946f4ced5125937711aa9e7d2d0d6` — `docs: record SIREN v1.0.0 release status`
+
+## Installer
+
+- File: `SIREN_1.0.0_x64-setup.exe`
+- Size: `76,459,745` bytes
+- SHA-256: `0E34000A8D843F1C5B3E0EED1301BDD324E34344E6A32A060BEFE06CA136C1BF`
 
 ## Gitea release
 
-Published to the private `Tyreezebreezy/siren` repository at
-`[private-git-server]` with the Windows installer and its
-SHA-256 checksum attached. Installer hash recorded in the release and the
-accompanying checksum file.
+Published as a non-draft, non-prerelease `v1.0.0` release to the private
+`Tyreezebreezy/siren` repository at
+`[private-git-server]` with the Windows
+installer and its SHA-256 checksum attached. The installer and checksum were
+downloaded back and re-verified against the local hashes, and unauthenticated
+requests to the repository, release, and assets all return 404.
