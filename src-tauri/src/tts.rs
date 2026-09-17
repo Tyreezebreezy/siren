@@ -72,7 +72,15 @@ impl TtsState {
             ));
         }
         let mut engine = self.engine.lock().await;
-        load_engine(&mut engine, &self.assets).await
+        load_engine(&mut engine, &self.assets).await?;
+        // Run one tiny synthesis so the first real request does not pay the
+        // one-time ONNX session initialization cost after the user presses Play.
+        engine
+            .as_ref()
+            .expect("engine initialized above")
+            .synthesize("SIREN is ready.", "af_heart", 1.0)
+            .await?;
+        Ok(())
     }
 
     pub fn status(&self) -> (bool, Vec<String>) {
@@ -98,9 +106,9 @@ async fn load_engine(engine: &mut Option<TtsEngine>, assets: &ModelAssets) -> Re
     Ok(())
 }
 
-fn debug_tts(message: std::fmt::Arguments<'_>) {
+fn debug_tts(_message: std::fmt::Arguments<'_>) {
     #[cfg(debug_assertions)]
-    eprintln!("[SIREN TTS] {message}");
+    eprintln!("[SIREN TTS] {_message}");
 }
 
 impl ModelAssets {
@@ -147,7 +155,7 @@ fn validate_request(text: &str, voice: &str, speed: f32) -> Result<(), String> {
         return Err("Enter text before playing it.".into());
     }
     if text.chars().count() > 1_000 {
-        return Err("SIREN synthesizes one sentence at a time.".into());
+        return Err("SIREN synthesizes text in bounded chunks.".into());
     }
     if !(0.5..=2.0).contains(&speed) {
         return Err("Reading speed must be between 0.5× and 2.0×.".into());
