@@ -83,7 +83,7 @@ export function loadState(): PersistedState {
 
 export function saveState(state: PersistedState) {
   try {
-    // ponytail: localStorage is enough for v0.1; move document bodies to SQLite if real books hit browser quotas.
+    // ponytail: localStorage is enough for v1.0; move document bodies to SQLite if real books hit browser quotas.
     localStorage.setItem(storageKey, JSON.stringify(state));
     return true;
   } catch {

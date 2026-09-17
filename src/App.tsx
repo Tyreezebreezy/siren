@@ -583,7 +583,7 @@ function App() {
           new Uint8Array(await file.arrayBuffer()),
         );
       } else {
-        throw new Error("SIREN v0.1 supports TXT, Markdown, and PDF files.");
+        throw new Error("SIREN supports TXT, Markdown, and PDF files.");
       }
 
       if (parseReaderDocument(text).sentences.length === 0) {
@@ -877,8 +877,8 @@ function App() {
             <span>Speed</span>
             <input
               type="range"
-              min="0.7"
-              max="1.5"
+              min="0.5"
+              max="2"
               step="0.05"
               value={state.settings.speed}
               onChange={(event) =>

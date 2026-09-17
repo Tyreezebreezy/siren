@@ -56,7 +56,7 @@ fn extract_pdf_bytes(bytes: &[u8]) -> Result<String, String> {
     let text = text.trim();
     if text.is_empty() {
         return Err(
-            "No readable text was found in this PDF. OCR is not supported in SIREN v0.1.".into(),
+            "No readable text was found in this PDF. OCR is not supported in SIREN.".into(),
         );
     }
     Ok(text.to_owned())
@@ -102,7 +102,7 @@ mod tests {
         let scanned_pdf = include_bytes!("../../tests/fixtures/scanned-no-text.pdf");
         assert_eq!(
             extract_pdf_bytes(scanned_pdf).unwrap_err(),
-            "No readable text was found in this PDF. OCR is not supported in SIREN v0.1."
+            "No readable text was found in this PDF. OCR is not supported in SIREN."
         );
     }
 }
