@@ -15,7 +15,9 @@ speed. Rust validates length, speed, and the voice identifier before routing the
 request through `TtsEngine`, currently the single native Kokoro ONNX variant.
 
 The loaded engine is reused behind an asynchronous mutex and warmed after app
-startup. CPU is the stable default execution provider unless development
+startup; the warmup runs one tiny synthesis so the first real request does not
+pay the one-time ONNX session initialization cost. CPU is the stable default
+execution provider unless development
 explicitly selects another provider. Synthesized 24 kHz
 mono samples are encoded as PCM WAV and returned using Tauri's raw binary IPC
 response, then played by the webview's native `Audio` element. A monotonically

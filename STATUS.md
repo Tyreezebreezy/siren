@@ -2,106 +2,91 @@
 
 ## Current state
 
-SIREN 0.1.0 remains the released private Gitea checkpoint. Work on the focused
-v0.1.1 performance and laptop-UX release candidate is in progress. The native app
-reads typed text, TXT, readable Markdown, and text-layer PDFs; synthesizes speech
-offline with bundled Kokoro assets; highlights and navigates sentences; and
-persists settings, recent readings, and position across restart. The final NSIS
-installer built, installed into an isolated directory, launched, found all four
-voices, restored reading state, and uninstalled cleanly.
+SIREN 1.0.0 is the released private Gitea checkpoint. The native Windows app
+reads typed or pasted text plus TXT, Markdown, and text-layer PDFs; synthesizes
+speech offline with bundled Kokoro assets; highlights and navigates sentences;
+and persists settings, recent readings, and exact sentence position across
+restart. Continuous buffered playback keeps the next speech unit ready while
+the current one plays, so long passages flow without the sentence-by-sentence
+gaps of the v0.1.0 pipeline.
 
-The annotated `v0.1.0-rc.1` and `v0.1.0` tags both resolve to the tested release
-checkpoint `dbc4c3df19647a68b5402c038f425debe1c0060d`.
+The annotated `v1.0.0` tag marks the tested release source. The earlier
+`v0.1.0-rc.1` and `v0.1.0` tags remain untouched and resolve to the historical
+v0.1.0 checkpoint `dbc4c3df19647a68b5402c038f425debe1c0060d`.
 
 ## Performance measurements
 
-- Baseline automatic-provider run: model load 8,007.6 ms; 66 characters took
-  6,163.6 ms for 4,500 ms audio (RTF 1.370); the warm 147-character request took
-  8,798.8 ms for 9,975 ms audio (RTF 0.882).
-- Baseline explicit-CPU run: model load 2,179.3 ms; 66 characters took 5,486.1 ms
-  for 4,500 ms audio (RTF 1.219); the warm 147-character request took 7,594.7 ms
-  for 9,975 ms audio (RTF 0.761).
-- The automatic run attempted unavailable CUDA and incompatible DirectML before
-  rebuilding on CPU. The installed Kokoro crate supports an explicit CPU provider.
-- Application transition delay and buffer-underrun measurements are pending the
-  native long-form QA pass. The baseline code starts the next synthesis only after
-  the current audio `ended` event.
+Local Kokoro benchmark (`cargo test --ignored benchmarks_local_kokoro`,
+debug build; inference runs in the precompiled ONNX runtime):
 
-## Completed
+- Model load: `4444.5 ms` (debug build; release loads in roughly 2.2 s).
+- First synthesis (66 characters, cold): `7463.0 ms` for `4500 ms` audio
+  (RTF 1.658). This first request includes a one-time ONNX session
+  initialization penalty of roughly 3.5 s.
+- Warm synthesis (147 characters): `8318.5 ms` for `9975 ms` audio (RTF 0.834).
+- Warm synthesis (288 characters): `16727.8 ms` for `18375 ms` audio (RTF 0.910).
 
-- Forge-derived Tauri 2/React/Rust project at `C:\Dev\siren` with clean Git history.
-- Native `kokoro-en` 0.1.5 inference without Python, PyTorch, CMake, or cloud APIs.
-- Bundled quantized Kokoro model and Bella, Heart, Adam, and Emma voice assets.
-- Sentence parsing, queue, highlighting, auto-scroll, progress, and navigation.
-- Play, sample-level Pause/Resume, Stop, Previous, Next, speed, and voice controls.
-- TXT, readable Markdown, and text-layer PDF import with explicit no-OCR handling.
-- Versioned local settings, eight-reading recent library, and sentence resume.
-- Dark, Light, and System themes; keyboard controls; responsive desktop/mobile UI.
-- Original SIREN icon, complete README, architecture notes, and third-party hashes.
-- Production CSP corrected and narrowed for local blob audio.
-- NSIS installer build and isolated install/start/uninstall smoke test.
-- Private `Tyreezebreezy/siren` Gitea repository, complete history, RC and final
-  tags, and final release with the verified installer and SHA-256 attachment.
+The explicit-CPU provider default avoids unavailable CUDA/DirectML probing and
+cut model setup from roughly 8.0 s to roughly 2.2 s. Startup warmup now runs one
+tiny synthesis so the user's first Play does not pay the cold-inference penalty;
+the remaining first-speech delay is the warm CPU synthesis of the first
+150-350-character chunk.
 
-## In progress
+## Long-form results
 
-- Buffered synthesis, cancellation, chunking, laptop layout, branding, regression,
-  and v0.1.1 RC packaging.
+A real installed-app run read an 18-sentence, two-paragraph document (about 730
+characters) through multiple speech chunks. Playback advanced from sentence 1
+through sentence 12 to the end with the status continuously reporting
+"Reading locally." and no visible stall. Stop preserved the position at sentence
+12, and a full app restart restored "Sentence 12 of 18" exactly.
 
-## Blockers
+## Laptop QA
 
-- None.
-
-## Decisions made
-
-- Use native Rust/ONNX with a small internal `TtsEngine` boundary.
-- Keep model binaries out of Git and bundle verified assets as Tauri resources.
-- Return PCM WAV through raw Tauri IPC and play it with the native webview audio API.
-- Use `Intl.Segmenter` plus common-abbreviation merging instead of heavyweight NLP.
-- Store up to eight normalized readings in versioned local storage; move to SQLite
-  only if measured webview quota becomes a real library-size limit.
-- Use native file inputs and no filesystem/shell plugin permissions.
+Browser QA at 1366x768 and 1440x900 reported no page-level horizontal overflow.
+The editor renders a compact six-row resizable textarea, the reader keeps a
+comfortable width, the recent-library rail expands without clipping the reader,
+and controls remain inside the viewport. Visible focus rings are defined for
+buttons, inputs, selects, and textareas. Navigation, theme switching, and the
+recent library were exercised at both sizes.
 
 ## Tests
 
 - `scripts\validate.ps1` — PASS (`SIREN_VALIDATION=PASS`).
-- Prettier, TypeScript, five Node reader/persistence tests, and Vite build — PASS.
-- `cargo test --locked` — PASS, four Rust/TTS/PDF tests.
-- `cargo clippy --locked --all-targets -- -D warnings` — PASS.
-- `npm audit --audit-level=high` — PASS, zero vulnerabilities.
-- Gitleaks — PASS, five commits scanned after final status commit; zero leaks.
-- Trivy with a refreshed database — PASS, zero High/Critical Cargo/npm findings
-  and zero reported secrets in the scoped source scan.
-- Browser QA — PASS at 1440×900 and 390×844, no console warnings/errors or
-  horizontal overflow; current position survived reload; TXT import opened five
-  sentences; Markdown parsing test passed.
-- PDF fixtures — PASS: text PDF extracted; scanned/no-text PDF returned the exact
-  no-OCR message; both fixture pages were rendered and visually inspected.
-- Native TTS proof — PASS through the real Windows audio output.
-- Production executable smoke — PASS: bundled voices discovered, local speech
-  played, highlight stayed aligned, and Pause/Resume worked.
-- Installer smoke — PASS: silent isolated install, installed app launch, reading
-  resume, four bundled voices, and clean uninstall.
-- Installer SHA-256 —
-  `918C7CED9A9C9D9850A56FB179BACBDF4B2ECE3A9497A425801573787CF09CA3`.
-- Private Gitea readback — PASS: repository, release, and installer were hidden
-  from unauthenticated requests; both installer downloads matched the recorded
-  SHA-256; repeated ZIP and tar.gz source downloads matched and contained 81
-  entries with no `node_modules`, `target`, `dist`, or `.env` paths.
+- Eight Node frontend tests (reader, playback buffer, theme) — PASS.
+- TypeScript, Prettier formatting, and Vite production build — PASS.
+- `cargo test --locked` — PASS, four Rust/TTS/PDF tests (one benchmark ignored).
+- `cargo clippy --locked --release --all-targets -- -D warnings` — PASS, clean.
+- Release build compiles with no warnings, including the former unused
+  debug-log argument.
 
-## Known issues
+## Security gates
+
+- `npm audit --audit-level=high` — PASS, zero vulnerabilities.
+- Trivy 0.72.0 with a refreshed vulnerability database — PASS, zero High/Critical
+  npm and Cargo findings and zero secrets.
+- Gitleaks 8.30.1 — PASS, eleven commits scanned, zero leaks.
+
+## Known limitations
 
 - The installer is not code-signed.
-- Initial model load and long-sentence CPU synthesis can take several seconds.
-- OCR, DOCX, EPUB, cloud sync, and audio export are intentionally outside v0.1.0.
-- `cargo-audit` is not installed; the refreshed Trivy scan covered `Cargo.lock`.
+- First speech after launch takes several seconds on CPU while the first
+  150-350-character chunk is synthesized.
+- Adjacent sentences may share one audio chunk; highlighting covers the active
+  chunk because Kokoro does not expose sentence timestamps.
+- OCR, DOCX, EPUB, cloud sync, voice cloning, and audio export are intentionally
+  outside 1.0.0.
 
-## Next actions
+## Final version
 
-1. Apply the measured CPU startup optimization and bounded playback prefetch.
-2. Verify long-form playback and laptop layouts, then run release gates and package
-   `v0.1.1-rc.1` if no blocker remains.
+`1.0.0`
 
-## Latest stable commit
+## Final commit
 
-`dbc4c3d` — tested and published `v0.1.0` checkpoint
+See the annotated `v1.0.0` tag and `git log` for the exact release commit hash.
+
+## Gitea release
+
+Published to the private `Tyreezebreezy/siren` repository at
+`[private-git-server]` with the Windows installer and its
+SHA-256 checksum attached. Installer hash recorded in the release and the
+accompanying checksum file.

@@ -1,6 +1,6 @@
 # SIREN
 
-SIREN 0.1.1 is a local-first Windows text-to-speech reader built with Tauri 2,
+SIREN 1.0.0 is a local-first Windows text-to-speech reader built with Tauri 2,
 React, TypeScript, and Rust. It reads typed or pasted text plus TXT, Markdown,
 and text-based PDF documents with local Kokoro speech synthesis. No cloud TTS
 API, account, or network connection is required during normal use.
@@ -25,7 +25,7 @@ API, account, or network connection is required during normal use.
 - `.pdf`: PDFs with an extractable text layer, up to 50 MB.
 
 Scanned/image-only PDFs are not supported and show an explicit no-OCR message.
-DOCX, EPUB, OCR, voice cloning, cloud sync, and audio export are outside 0.1.1.
+DOCX, EPUB, OCR, voice cloning, cloud sync, and audio export are outside 1.0.
 
 ## Development
 
@@ -72,7 +72,7 @@ installer compression. Release artifacts are build output and are not committed.
 
 SIREN stores settings and up to eight recent reading bodies in the app webview's
 versioned local storage. Keeping the normalized text locally lets a reading
-resume even if its source file is later moved. The 0.1.1 storage ceiling is the
+resume even if its source file is later moved. The 1.0 storage ceiling is the
 webview's local quota; SQLite is the upgrade path if book-scale libraries exceed
 it. Documents and synthesized audio are not sent to a remote service.
 
