@@ -67,10 +67,15 @@ const readyBufferSize = 3;
 
 function App() {
   const [state, setState] = useState<PersistedState>(loadState);
+  const [surface, setSurface] = useState<"library" | "reader">(
+    state.activeId ? "reader" : "library",
+  );
   const [editing, setEditing] = useState(!state.activeId);
   const [draftName, setDraftName] = useState("Untitled");
   const [draftText, setDraftText] = useState("");
   const [libraryExpanded, setLibraryExpanded] = useState(false);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [followCurrent, setFollowCurrent] = useState(true);
   const [message, setMessage] = useState("Ready.");
   const [playback, setPlayback] = useState<PlaybackState>("idle");
   const [tts, setTts] = useState<TtsStatus>({
@@ -147,11 +152,6 @@ function App() {
             },
           }));
         }
-        if (status.ready) {
-          void invoke("tts_warmup").catch((error) =>
-            debugTts({ phase: "warmup-failed", error: String(error) }),
-          );
-        }
       })
       .catch(() => {
         // Browser-only visual QA has no Tauri command bridge.
@@ -159,12 +159,24 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!state.settings.autoScroll || editing) return;
+    if (
+      !state.settings.autoScroll ||
+      !followCurrent ||
+      editing ||
+      surface !== "reader"
+    )
+      return;
     document.getElementById(`sentence-${currentIndex}`)?.scrollIntoView({
       behavior: "smooth",
       block: "center",
     });
-  }, [currentIndex, editing, state.settings.autoScroll]);
+  }, [
+    currentIndex,
+    editing,
+    followCurrent,
+    state.settings.autoScroll,
+    surface,
+  ]);
 
   useEffect(
     () => () => {
@@ -231,7 +243,7 @@ function App() {
     releaseAudio();
     setHighlightRange(null);
     setPlayback("error");
-    setMessage(String(error));
+    setMessage(userMessage(error));
     debugTts({
       phase: "failed",
       chunkIndex: unit.chunk.index,
@@ -441,7 +453,7 @@ function App() {
     }
   }
 
-  function play() {
+  function play(startIndex = currentIndex, restart = false) {
     if (!activeDocument || reader.sentences.length === 0) {
       setMessage("Enter or open text before playing it.");
       return;
@@ -453,8 +465,8 @@ function App() {
       });
       return;
     }
-    if (playback === "playing" || playback === "loading") return;
-    const chunks = buildSpeechChunks(reader.sentences, currentIndex);
+    if (!restart && (playback === "playing" || playback === "loading")) return;
+    const chunks = buildSpeechChunks(reader.sentences, startIndex);
     if (chunks.length === 0) return;
     const session = playbackBuffer.begin();
     speechUnitsRef.current = chunks.map((chunk) => ({
@@ -488,12 +500,48 @@ function App() {
 
   function move(delta: number) {
     stopPlayback();
+    setFollowCurrent(true);
     setPosition(moveSentence(currentIndex, delta, reader.sentences.length));
+  }
+
+  function jumpToSentence(index: number) {
+    const resume = playback === "playing" || playback === "loading";
+    stopPlayback();
+    setPosition(index);
+    setFollowCurrent(true);
+    if (resume) window.setTimeout(() => play(index, true), 0);
+  }
+
+  function returnToCurrent() {
+    setFollowCurrent(true);
+    requestAnimationFrame(() =>
+      document.getElementById(`sentence-${currentIndex}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      }),
+    );
+  }
+
+  function yieldFollow() {
+    if (
+      state.settings.autoScroll &&
+      (playback === "playing" || playback === "loading")
+    ) {
+      setFollowCurrent(false);
+    }
+  }
+
+  function showLibrary() {
+    stopPlayback();
+    setAppearanceOpen(false);
+    setSurface("library");
   }
 
   function openDocument(document: LibraryDocument) {
     stopPlayback();
     setLibraryExpanded(false);
+    setFollowCurrent(true);
+    setSurface("reader");
     setEditing(false);
     setState((current) => ({
       ...current,
@@ -509,6 +557,7 @@ function App() {
 
   function beginNewText() {
     stopPlayback();
+    setSurface("reader");
     setDraftName("Untitled");
     setDraftText("");
     setEditing(true);
@@ -518,6 +567,7 @@ function App() {
   function editCurrentText() {
     if (!activeDocument) return;
     stopPlayback();
+    setSurface("reader");
     setDraftName(activeDocument.name);
     setDraftText(activeDocument.text);
     setEditing(true);
@@ -546,6 +596,7 @@ function App() {
   }
 
   function addDocument(document: LibraryDocument) {
+    setSurface("reader");
     setState((current) => ({
       ...current,
       activeId: document.id,
@@ -602,12 +653,27 @@ function App() {
       setMessage(`Opened ${file.name}.`);
     } catch (error) {
       setPlayback("error");
-      setMessage(String(error));
+      setMessage(userMessage(error));
     }
   }
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      const command = event.ctrlKey || event.metaKey;
+      if (command && event.key.toLowerCase() === "o") {
+        event.preventDefault();
+        fileInputRef.current?.click();
+        return;
+      }
+      if (command && event.key === ",") {
+        event.preventDefault();
+        setAppearanceOpen((open) => !open);
+        return;
+      }
+      if (event.key === "Escape" && appearanceOpen) {
+        setAppearanceOpen(false);
+        return;
+      }
       const target = event.target as HTMLElement | null;
       if (
         target?.matches("input, textarea, select") ||
@@ -644,15 +710,31 @@ function App() {
         : "Play";
 
   return (
-    <div className={`app-shell${libraryExpanded ? " library-expanded" : ""}`}>
+    <div
+      className={`app-shell ${surface}-view${libraryExpanded ? " library-expanded" : ""}`}
+      data-text-size={state.settings.textSize}
+      data-line-spacing={state.settings.lineSpacing}
+      data-reader-width={state.settings.readerWidth}
+    >
       <header className="app-header">
-        <button className="brand" type="button" onClick={beginNewText}>
+        <button
+          className="brand"
+          type="button"
+          onClick={showLibrary}
+          aria-label="Open Library"
+        >
           <span className="brand-mark" aria-hidden="true">
             <BrandMark />
           </span>
           <span>SIREN</span>
         </button>
         <div className="document-actions">
+          {surface === "reader" ? (
+            <button type="button" onClick={showLibrary}>
+              <Icon name="library" />
+              Library
+            </button>
+          ) : null}
           <button
             className="library-toggle"
             type="button"
@@ -661,7 +743,7 @@ function App() {
             onClick={() => setLibraryExpanded((expanded) => !expanded)}
           >
             <Icon name="library" />
-            Recent
+            Contents
           </button>
           <button type="button" onClick={() => fileInputRef.current?.click()}>
             <Icon name="folder" />
@@ -687,53 +769,137 @@ function App() {
         <h1 className="document-title">
           {editing ? draftName || "Untitled" : activeDocument?.name || "SIREN"}
         </h1>
-        <fieldset className="theme-control">
-          <legend>Appearance</legend>
-          {themeOptions.map((theme) => (
-            <label key={theme}>
-              <input
-                type="radio"
-                name="theme"
-                value={theme}
-                checked={state.settings.theme === theme}
-                onChange={() => updateSettings({ theme })}
-              />
-              <span>{theme[0].toUpperCase() + theme.slice(1)}</span>
-            </label>
-          ))}
-        </fieldset>
+        <div className="appearance">
+          <button
+            type="button"
+            aria-controls="appearance-panel"
+            aria-expanded={appearanceOpen}
+            onClick={() => setAppearanceOpen((open) => !open)}
+          >
+            Appearance
+          </button>
+          {appearanceOpen ? (
+            <div id="appearance-panel" className="appearance-panel">
+              <fieldset className="theme-control">
+                <legend>Theme</legend>
+                {themeOptions.map((theme) => (
+                  <label key={theme}>
+                    <input
+                      type="radio"
+                      name="theme"
+                      value={theme}
+                      checked={state.settings.theme === theme}
+                      onChange={() => updateSettings({ theme })}
+                    />
+                    <span>{theme[0].toUpperCase() + theme.slice(1)}</span>
+                  </label>
+                ))}
+              </fieldset>
+              <label>
+                <span>Text size</span>
+                <select
+                  value={state.settings.textSize}
+                  onChange={(event) =>
+                    updateSettings({
+                      textSize: event.target
+                        .value as PersistedState["settings"]["textSize"],
+                    })
+                  }
+                >
+                  <option value="small">Small</option>
+                  <option value="medium">Medium</option>
+                  <option value="large">Large</option>
+                </select>
+              </label>
+              <label>
+                <span>Line spacing</span>
+                <select
+                  value={state.settings.lineSpacing}
+                  onChange={(event) =>
+                    updateSettings({
+                      lineSpacing: event.target
+                        .value as PersistedState["settings"]["lineSpacing"],
+                    })
+                  }
+                >
+                  <option value="compact">Compact</option>
+                  <option value="comfortable">Comfortable</option>
+                  <option value="relaxed">Relaxed</option>
+                </select>
+              </label>
+              <label>
+                <span>Reader width</span>
+                <select
+                  value={state.settings.readerWidth}
+                  onChange={(event) =>
+                    updateSettings({
+                      readerWidth: event.target
+                        .value as PersistedState["settings"]["readerWidth"],
+                    })
+                  }
+                >
+                  <option value="narrow">Narrow</option>
+                  <option value="comfortable">Comfortable</option>
+                  <option value="wide">Wide</option>
+                </select>
+              </label>
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={state.settings.highlighting}
+                  onChange={(event) =>
+                    updateSettings({ highlighting: event.target.checked })
+                  }
+                />
+                <span aria-hidden="true" />
+                Highlight current text
+              </label>
+            </div>
+          ) : null}
+        </div>
       </header>
 
       <aside
         id="recent-library"
         className="library"
-        aria-label="Recent documents"
+        aria-label="Document contents"
       >
-        <h2>Recent</h2>
+        <h2>Contents</h2>
         <div className="recent-list">
-          {state.documents.length === 0 ? (
+          {!activeDocument ? (
             <p className="empty-library">
-              Documents you open stay on this device.
+              Open a document to view its passages.
             </p>
           ) : (
-            state.documents.map((document) => (
-              <button
-                className={document.id === state.activeId ? "active" : ""}
-                type="button"
-                key={document.id}
-                title={document.name}
-                onClick={() => openDocument(document)}
-              >
-                <Icon name="document" />
-                <span>
-                  <strong>{document.name}</strong>
-                  <small>
-                    {document.kind.toUpperCase()} · Sentence{" "}
-                    {document.position + 1}
-                  </small>
-                </span>
-              </button>
-            ))
+            reader.paragraphs.map((paragraph) => {
+              const start = paragraph.sentences[0]?.index ?? 0;
+              const active = paragraph.sentences.some(
+                ({ index }) => index === currentIndex,
+              );
+              const preview = paragraph.sentences
+                .map(({ text }) => text)
+                .join(" ")
+                .slice(0, 58);
+              return (
+                <button
+                  className={active ? "active" : ""}
+                  type="button"
+                  key={paragraph.index}
+                  aria-current={active ? "true" : undefined}
+                  onClick={() => jumpToSentence(start)}
+                  aria-label={`Passage ${paragraph.index + 1}: ${preview}`}
+                >
+                  <Icon name="document" />
+                  <span>
+                    <strong>Passage {paragraph.index + 1}</strong>
+                    <small>
+                      {preview}
+                      {preview.length === 58 ? "…" : ""}
+                    </small>
+                  </span>
+                </button>
+              );
+            })
           )}
         </div>
         <p className="local-state">
@@ -741,8 +907,84 @@ function App() {
         </p>
       </aside>
 
-      <main className="reader-frame">
-        {editing ? (
+      <main
+        className="reader-frame"
+        onWheel={yieldFollow}
+        onTouchStart={yieldFollow}
+      >
+        {surface === "library" ? (
+          <section className="library-home" aria-labelledby="library-heading">
+            <p className="eyebrow">Private · Local · Offline</p>
+            <h2 id="library-heading">Listen to your documents.</h2>
+            <p className="library-intro">
+              Open a file or paste text. SIREN keeps your reading and progress
+              on this device.
+            </p>
+            <div className="library-actions">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Icon name="folder" />
+                Open document
+              </button>
+              <button type="button" onClick={beginNewText}>
+                <Icon name="plus" />
+                New text
+              </button>
+            </div>
+            {editing && draftText.trim() ? (
+              <button
+                className="continue-card"
+                type="button"
+                onClick={() => setSurface("reader")}
+              >
+                <span>Continue draft</span>
+                <strong>{draftName || "Untitled"}</strong>
+                <small>
+                  {draftText.trim().length.toLocaleString()} characters
+                </small>
+              </button>
+            ) : activeDocument ? (
+              <button
+                className="continue-card"
+                type="button"
+                onClick={() => openDocument(activeDocument)}
+              >
+                <span>Continue listening</span>
+                <strong>{activeDocument.name}</strong>
+                <small>
+                  Sentence {currentIndex + 1} of {reader.sentences.length}
+                </small>
+              </button>
+            ) : null}
+            <div className="library-section">
+              <h3>Recent</h3>
+              {state.documents.length === 0 ? (
+                <p>No documents yet. Open one to begin.</p>
+              ) : (
+                <div className="library-grid">
+                  {state.documents.map((document) => (
+                    <button
+                      type="button"
+                      key={document.id}
+                      onClick={() => openDocument(document)}
+                    >
+                      <Icon name="document" />
+                      <span>
+                        <strong>{document.name}</strong>
+                        <small>
+                          {document.kind.toUpperCase()} · Sentence{" "}
+                          {document.position + 1}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        ) : editing ? (
           <section className="editor" aria-labelledby="editor-heading">
             <div className="editor-heading">
               <div>
@@ -771,32 +1013,46 @@ function App() {
             </div>
           </section>
         ) : activeDocument ? (
-          <article className="reader" aria-label={activeDocument.name}>
-            {reader.paragraphs.map((paragraph) => (
-              <p key={paragraph.index}>
-                {paragraph.sentences.map((sentence) => (
-                  <span
-                    id={`sentence-${sentence.index}`}
-                    className={
-                      (highlightRange === null &&
-                        sentence.index === currentIndex) ||
-                      (highlightRange !== null &&
-                        sentence.index >= highlightRange.start &&
-                        sentence.index <= highlightRange.end)
-                        ? "current"
-                        : ""
-                    }
-                    aria-current={
-                      sentence.index === currentIndex ? "true" : undefined
-                    }
-                    key={sentence.index}
-                  >
-                    {sentence.text}{" "}
-                  </span>
-                ))}
-              </p>
-            ))}
-          </article>
+          <>
+            {!followCurrent && state.settings.autoScroll ? (
+              <button
+                className="return-current"
+                type="button"
+                onClick={returnToCurrent}
+              >
+                Return to current
+              </button>
+            ) : null}
+            <article className="reader" aria-label={activeDocument.name}>
+              {reader.paragraphs.map((paragraph) => (
+                <p key={paragraph.index}>
+                  {paragraph.sentences.map((sentence) => (
+                    <button
+                      type="button"
+                      id={`sentence-${sentence.index}`}
+                      className={`sentence${
+                        state.settings.highlighting &&
+                        ((highlightRange === null &&
+                          sentence.index === currentIndex) ||
+                          (highlightRange !== null &&
+                            sentence.index >= highlightRange.start &&
+                            sentence.index <= highlightRange.end))
+                          ? " current"
+                          : ""
+                      }`}
+                      aria-current={
+                        sentence.index === currentIndex ? "true" : undefined
+                      }
+                      onClick={() => jumpToSentence(sentence.index)}
+                      key={sentence.index}
+                    >
+                      {sentence.text}{" "}
+                    </button>
+                  ))}
+                </p>
+              ))}
+            </article>
+          </>
         ) : (
           <section className="empty-reader">
             <h2>Your local reading space</h2>
@@ -908,6 +1164,10 @@ function App() {
 
 function debugTts(details: Record<string, unknown>) {
   if (import.meta.env.DEV) console.debug("[SIREN TTS]", details);
+}
+
+function userMessage(error: unknown) {
+  return String(error).replace(/^Error:\s*/, "");
 }
 
 function ControlButton({

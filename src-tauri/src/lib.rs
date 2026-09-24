@@ -31,11 +31,6 @@ async fn tts_synthesize(
 }
 
 #[tauri::command]
-async fn tts_warmup(state: tauri::State<'_, tts::TtsState>) -> Result<(), String> {
-    state.warmup().await
-}
-
-#[tauri::command]
 fn extract_pdf(request: Request<'_>) -> Result<String, String> {
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err("SIREN received an invalid PDF payload.".into());
@@ -68,13 +63,19 @@ pub fn run() {
         .setup(|app| {
             let model_directory = tts::model_directory(app)?;
             app.manage(tts::TtsState::from_model_directory(model_directory));
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(_error) = app_handle.state::<tts::TtsState>().warmup().await {
+                    #[cfg(debug_assertions)]
+                    eprintln!("[SIREN TTS] startup warmup failed: {_error}");
+                }
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             extract_pdf,
             tts_status,
-            tts_synthesize,
-            tts_warmup
+            tts_synthesize
         ])
         .run(tauri::generate_context!())
         .expect("error while running the Tauri application");

@@ -1,6 +1,6 @@
 # SIREN
 
-SIREN 1.0.0 is a local-first Windows text-to-speech reader built with Tauri 2,
+SIREN 1.1.0 is a local-first Windows text-to-speech reader built with Tauri 2,
 React, TypeScript, and Rust. It reads typed or pasted text plus TXT, Markdown,
 and text-based PDF documents with local Kokoro speech synthesis. No cloud TTS
 API, account, or network connection is required during normal use.
@@ -8,14 +8,17 @@ API, account, or network connection is required during normal use.
 ## Features
 
 - Buffered local speech with bounded lookahead and near-instant chunk transitions.
+- Separate Library and focused Reader surfaces with a Continue action.
 - Sentence-oriented Play, Pause/Resume, Stop, Previous, and Next controls.
-- Current-sentence highlighting, progress, and optional auto-scroll.
+- Current-sentence highlighting, click-to-read navigation, and auto-scroll that
+  yields to manual reading with a Return to current action.
+- Persisted text size, line spacing, reader width, highlighting, and theme controls.
 - Four bundled Kokoro voices: Bella, Heart, Adam, and Emma.
 - Reading speed from 0.5× to 2.0×.
 - Dark, Light, and System themes.
 - Local settings, recent readings, document text, and sentence position resume.
 - Keyboard controls outside text fields: Space to play/pause, Escape to stop,
-  and Left/Right to move between sentences.
+  Left/Right to navigate, Ctrl+O to open a document, and Ctrl+, for Appearance.
 
 ## Supported documents
 
@@ -25,7 +28,7 @@ API, account, or network connection is required during normal use.
 - `.pdf`: PDFs with an extractable text layer, up to 50 MB.
 
 Scanned/image-only PDFs are not supported and show an explicit no-OCR message.
-DOCX, EPUB, OCR, voice cloning, cloud sync, and audio export are outside 1.0.
+DOCX, EPUB, OCR, voice cloning, cloud sync, and audio export are outside 1.1.
 
 ## Development
 
@@ -72,14 +75,14 @@ installer compression. Release artifacts are build output and are not committed.
 
 SIREN stores settings and up to eight recent reading bodies in the app webview's
 versioned local storage. Keeping the normalized text locally lets a reading
-resume even if its source file is later moved. The 1.0 storage ceiling is the
-webview's local quota; SQLite is the upgrade path if book-scale libraries exceed
+resume even if its source file is later moved. The 1.1 storage ceiling is the
+webview's local quota; SQLite remains the upgrade path if book-scale libraries exceed
 it. Documents and synthesized audio are not sent to a remote service.
 
 ## Known limitations
 
 - First speech after launch can take several seconds on CPU while its first
-  150–350-character chunk is synthesized.
+  paragraph-sized chunk is synthesized.
 - Adjacent sentences may share one audio chunk. Navigation and resume remain
   sentence-indexed; highlighting covers the active chunk because Kokoro does not
   provide sentence timestamps.

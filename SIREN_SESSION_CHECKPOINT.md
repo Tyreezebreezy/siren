@@ -95,10 +95,52 @@ Deferred unless all core gates are healthy:
 - Missing-file relink: current SIREN intentionally stores normalized local bodies,
   so moved source files do not break resume.
 
+## Implemented v1.1.0 slice
+
+- Native startup now owns exactly one Kokoro warmup; the public frontend warmup
+  command and StrictMode duplicate-work path were removed.
+- Added distinct Library and focused Reader surfaces using the existing state and
+  persistence model.
+- Added accessible click-to-read sentences, manual-scroll yielding, Return to
+  current, and a paragraph-derived contents rail.
+- Added persisted text-size, line-spacing, reader-width, highlighting, and theme
+  controls plus Ctrl+O and Ctrl+, shortcuts.
+- Extended the existing storage validation and regression tests without adding a
+  dependency or changing the local-first trust boundary.
+- Kept the proven 300-character paragraph-bounded queue after a smaller adaptive
+  first-chunk experiment improved startup but caused audible underruns and gaps.
+
+## Current v1.1.0 measurements
+
+With native warmup and the stable baseline queue, first audible playback measured
+13,554 ms, an 11.9% reduction from the 15,389 ms baseline. Average synthesis was
+14,634 ms. A debug run recorded a 571 ms average transition, 4,719 ms worst
+transition, and one underrun during two RTF-above-1 synthesis spikes. The queue
+implementation is unchanged from the zero-underrun baseline; the exact release
+build must pass an installed-app continuity smoke test before final promotion.
+
+The rejected adaptive first-chunk trial produced 5.96-9.64 second first-audible
+times but also one to three underruns and worst gaps of 449-2,317 ms. It was
+fully reverted rather than trading a benchmark win for worse listening.
+
+## v1.1.0 responsive and interaction QA
+
+Native WebView2 CDP checks at 1366x768, 1440x900, and 1920x1080 found no page
+overflow. Click-to-read, click-to-resume during playback, appearance settings,
+manual-scroll yielding, Return to current, Library navigation, and recent-reading
+rendering passed with no captured console errors. The Browser/Computer Use image
+runtime remained unavailable due its Windows sandbox ACL helper, so CDP supplied
+the rendered DOM, interaction, and screenshot evidence.
+
+OCR remains deferred because the measured core speech path has not yet cleared
+its final installed-release continuity gate.
+
 ## Exact next action
 
-Implement and test adaptive first-chunk sizing plus earlier native warmup, then
-remeasure first-audible latency before beginning the focused Reader slice.
+Run the complete validation and security gates, build the v1.1.0 installer, and
+smoke-test that exact installed build for playback continuity, cancellation, and
+resume. Promote to final only if those gates pass; otherwise publish rc.1 with the
+measured blocker.
 
 ## Release state
 

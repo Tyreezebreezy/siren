@@ -1,11 +1,19 @@
 import type { DocumentKind } from "./reader";
 import type { ThemePreference } from "./theme";
 
+export type TextSize = "small" | "medium" | "large";
+export type LineSpacing = "compact" | "comfortable" | "relaxed";
+export type ReaderWidth = "narrow" | "comfortable" | "wide";
+
 export type Settings = {
   theme: ThemePreference;
   voice: string;
   speed: number;
   autoScroll: boolean;
+  highlighting: boolean;
+  textSize: TextSize;
+  lineSpacing: LineSpacing;
+  readerWidth: ReaderWidth;
 };
 
 export type LibraryDocument = {
@@ -29,6 +37,10 @@ export const defaultSettings: Settings = {
   voice: "af_heart",
   speed: 1,
   autoScroll: true,
+  highlighting: true,
+  textSize: "medium",
+  lineSpacing: "comfortable",
+  readerWidth: "comfortable",
 };
 
 const storageKey = "siren-state-v1";
@@ -66,6 +78,22 @@ export function normalizeState(value: unknown): PersistedState {
           : 1,
       autoScroll:
         typeof settings.autoScroll === "boolean" ? settings.autoScroll : true,
+      highlighting:
+        typeof settings.highlighting === "boolean"
+          ? settings.highlighting
+          : true,
+      textSize:
+        settings.textSize === "small" || settings.textSize === "large"
+          ? settings.textSize
+          : "medium",
+      lineSpacing:
+        settings.lineSpacing === "compact" || settings.lineSpacing === "relaxed"
+          ? settings.lineSpacing
+          : "comfortable",
+      readerWidth:
+        settings.readerWidth === "narrow" || settings.readerWidth === "wide"
+          ? settings.readerWidth
+          : "comfortable",
     },
     documents: candidate.documents.filter(isLibraryDocument).slice(0, 8),
     activeId:
@@ -83,7 +111,7 @@ export function loadState(): PersistedState {
 
 export function saveState(state: PersistedState) {
   try {
-    // ponytail: localStorage is enough for v1.0; move document bodies to SQLite if real books hit browser quotas.
+    // ponytail: localStorage is enough for v1.1; move document bodies to SQLite if real books hit browser quotas.
     localStorage.setItem(storageKey, JSON.stringify(state));
     return true;
   } catch {

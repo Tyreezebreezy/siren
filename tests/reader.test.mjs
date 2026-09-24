@@ -32,10 +32,23 @@ test("Markdown becomes readable without structural markers", () => {
 test("navigation and persisted settings stay within safe bounds", () => {
   assert.equal(moveSentence(0, -1, 4), 0);
   assert.equal(moveSentence(3, 1, 4), 3);
+  const migrated = normalizeState({
+    version: 1,
+    settings: { speed: 99 },
+    documents: [],
+  }).settings;
+  assert.equal(migrated.speed, 1);
+  assert.equal(migrated.highlighting, true);
+  assert.equal(migrated.textSize, "medium");
+  assert.equal(migrated.lineSpacing, "comfortable");
+  assert.equal(migrated.readerWidth, "comfortable");
   assert.equal(
-    normalizeState({ version: 1, settings: { speed: 99 }, documents: [] })
-      .settings.speed,
-    1,
+    normalizeState({
+      version: 1,
+      settings: { textSize: "large" },
+      documents: [],
+    }).settings.textSize,
+    "large",
   );
 });
 
