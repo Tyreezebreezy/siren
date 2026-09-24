@@ -54,9 +54,9 @@ temporary directory, exercised, and uninstalled successfully.
   ignored real-OCR scanned/mixed integration PASS; TypeScript/Vite build PASS.
 - Release clippy PASS with warnings denied; npm audit and refreshed Trivy report
   zero vulnerabilities; Gitleaks reports zero leaks across the 43-file candidate,
-  the installed-path and evidence patches, and all 23 prior committed revisions.
-  RustSec reports no vulnerabilities and only inherited maintenance/unsoundness
-  warnings.
+  installed-path, evidence, and publication patches, plus all 24 prior committed
+  revisions. RustSec reports no vulnerabilities and only inherited
+  maintenance/unsoundness warnings.
 - The first isolated v1.2 installer passed TTS (12,523 ms first audible, 30 ms
   average / 51 ms worst transition, zero observed underruns) but exposed an
   installed-only OCR failure: Tauri returned `\\?\` resource paths that Tesseract
@@ -68,9 +68,8 @@ temporary directory, exercised, and uninstalled successfully.
 
 ## v1.2.0 exact next action
 
-Create the annotated `v1.2.0` tag, push `main` and the tag to the existing private
-Gitea repository, publish the installer and checksum, then perform authenticated
-download/hash and unauthenticated 404 readback. Stop after verified publication.
+None. Final `v1.2.0` is published and verified; stop without starting another
+SIREN feature version.
 
 ## v1.2.0 final installed candidate
 
@@ -85,6 +84,15 @@ download/hash and unauthenticated 404 readback. Stop after verified publication.
   responsive and accessibility checks, and paused sentence/page restart resume PASS.
 - Installed resources: 59 OCR hashes, model, four voices, PDFium licenses, and
   notices PASS. Isolated silent install/uninstall PASS.
+- Private Gitea release: non-draft, non-prerelease `v1.2.0`, release id 77.
+- Annotated tag object `4d1ca23041d4f2f0636df4d858cd5dd324cba977` peels to
+  evidence commit `6290017df6b69d012c03c6b94e7685094833cece`.
+- Authenticated installer/checksum re-download matched exact size, hash, and
+  checksum text. Unauthenticated repository/release/asset reads returned 404.
+- Generated ZIP `74C49E472D0132095721ACB6F91DF05AA21BBCED624D7099DF9A110F110958C9`
+  and tar.gz `AA30B87F3FCA260FA79A8CD894666854E150854C26B43EDD46C1E87FEFF489F7`
+  were stable across two downloads each, contained 113 entries, and excluded
+  build output, secrets, model assets, and OCR runtimes.
 
 ## Retained v1.1.0 release record
 

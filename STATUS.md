@@ -47,8 +47,8 @@ remain unchanged. Exact-final installed continuity passed before release.
 - Trivy 0.72.0 with refreshed database: PASS, zero High/Critical npm or Cargo
   vulnerabilities and zero reported source secrets.
 - RustSec: zero vulnerabilities; inherited maintenance/unsoundness warnings only.
-- Gitleaks 8.30.1: PASS; exact candidate/path-fix/evidence patches and all 23
-  prior committed revisions scanned with zero leaks.
+- Gitleaks 8.30.1: PASS; candidate, path-fix, evidence, and publication patches
+  plus all 24 prior committed revisions scanned with zero leaks.
 - Repository must remain private; no GitHub publication is authorized.
 
 ## Final installed evidence
@@ -70,10 +70,19 @@ remain unchanged. Exact-final installed continuity passed before release.
   third-party notice were present; every pinned runtime hash matched.
 - Isolated silent install and uninstall: PASS.
 
-## Remaining final gates
+## Private release readback
 
-- Annotated tag, private Gitea release, asset upload/download hash readback, and
-  authenticated/unauthenticated private-access checks.
+- Private repository: `Tyreezebreezy/siren`; release is non-draft and
+  non-prerelease at `[private-git-server]`.
+- Annotated tag object: `4d1ca23041d4f2f0636df4d858cd5dd324cba977`; peeled
+  evidence commit: `6290017df6b69d012c03c6b94e7685094833cece`.
+- Published assets are exactly the installer and checksum. Authenticated
+  re-download matched 120,252,350 bytes and SHA-256
+  `57B0519DB18E00A05B84CD9B9BC076DADE4F4582B88D9996DF56C7D475BEB06C`.
+- Unauthenticated repository, release, installer, and checksum requests returned 404.
+- Gitea-generated ZIP and tar.gz archives were downloaded twice each with stable
+  hashes, 113 entries, and no `node_modules`, `target`, `dist`, `.env`, Git data,
+  ignored model files, or ignored OCR runtimes.
 
 ## Known limitations
 
@@ -97,4 +106,4 @@ remain unchanged. Exact-final installed continuity passed before release.
 
 ## Release state
 
-VALIDATED, NOT YET PUBLISHED. Only private Gitea publication/readback remains.
+PUBLISHED AND VERIFIED. No v1.2.0 release action remains.
