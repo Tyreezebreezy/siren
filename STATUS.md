@@ -35,7 +35,7 @@ remain unchanged. Final installed continuity must pass before release.
 
 - `scripts\validate.ps1`: PASS (`SIREN_VALIDATION=PASS`).
 - Prettier, TypeScript, 9 Node tests, and Vite production build: PASS.
-- `cargo test --locked`: PASS (5 passed; 3 asset benchmarks/integrations ignored).
+- `cargo test --locked`: PASS (6 passed; 3 asset benchmarks/integrations ignored).
 - Real scanned/mixed-PDF OCR integration: PASS.
 - `cargo clippy --locked --release --all-targets -- -D warnings`: PASS.
 - Browser interaction/responsive QA: PASS across 18 states at 1366x768,
@@ -47,9 +47,27 @@ remain unchanged. Final installed continuity must pass before release.
 - Trivy 0.72.0 with refreshed database: PASS, zero High/Critical npm or Cargo
   vulnerabilities and zero reported source secrets.
 - RustSec: zero vulnerabilities; inherited maintenance/unsoundness warnings only.
-- Gitleaks 8.30.1: PASS; 43 staged candidate files and all 21 committed
+- Gitleaks 8.30.1: PASS; exact candidate/path-fix patches and all 22 committed
   revisions scanned with zero leaks.
 - Repository must remain private; no GitHub publication is authorized.
+
+## Installed pre-final evidence
+
+- Initial v1.2 installer launch to WebView: 1,763 ms.
+- First audible: 12,523 ms; 10/10 chunks; 30 ms average and 51 ms worst
+  transitions; zero observed underruns.
+- Stop response: 2 ms; no stale playback during the following 25 seconds.
+- Active synthesis CPU: 198.4% average / 279.8% peak of one logical-core
+  equivalent; working set 908.3 MiB average / 1,005.9 MiB peak; private memory
+  1,203.3 MiB average / 1,360.0 MiB peak.
+- The initial install exposed a Windows verbatim-prefix incompatibility in the
+  Tesseract tessdata argument. The prefix-only normalization and disk/UNC tests
+  are implemented; the fixed production installed payload passed real mixed-PDF
+  OCR, progress, cache reuse, eight-page cancellation, and unchanged-source hash.
+- Installed responsive/accessibility checks passed at 1366x768, 1440x900, and
+  1920x1080 with no overflow or unnamed controls. Restart restored page navigation,
+  `sentence-1`, and a paused Play state.
+- Final installer rebuild and exact reinstall/readback remain pending.
 
 ## Remaining final gates
 

@@ -50,17 +50,25 @@ temporary directory, exercised, and uninstalled successfully.
   regression coverage.
 - Browser fallback QA passed 18 states across 1366x768, 1440x900, and 1920x1080
   with no overflow, unnamed controls, or observed interaction failures.
-- Current source gates: 9 Node tests PASS; 5 Rust tests PASS with 3 ignored;
+- Current source gates: 9 Node tests PASS; 6 Rust tests PASS with 3 ignored;
   ignored real-OCR scanned/mixed integration PASS; TypeScript/Vite build PASS.
 - Release clippy PASS with warnings denied; npm audit and refreshed Trivy report
-  zero vulnerabilities; Gitleaks reports zero leaks across the 43-file candidate
-  and all 21 committed revisions. RustSec reports no vulnerabilities and only
-  inherited maintenance/unsoundness warnings.
+  zero vulnerabilities; Gitleaks reports zero leaks across the 43-file candidate,
+  the installed-path fix, and all 22 committed revisions. RustSec reports no
+  vulnerabilities and only inherited maintenance/unsoundness warnings.
+- The first isolated v1.2 installer passed TTS (12,523 ms first audible, 30 ms
+  average / 51 ms worst transition, zero observed underruns) but exposed an
+  installed-only OCR failure: Tauri returned `\\?\` resource paths that Tesseract
+  rejected for `--tessdata-dir`. SIREN now removes only that Windows prefix, with
+  disk and UNC regression tests.
+- The fixed production installed payload passed mixed-PDF OCR, progress, cache
+  reuse, eight-page cancellation, unchanged source hash, three-viewport responsive
+  and accessible-control checks, plus paused sentence/page resume after restart.
 
 ## v1.2.0 exact next action
 
-Commit the exact candidate, then run the release build, installed TTS/OCR,
-responsive, accessibility, persistence/resume, installer, and private-release
+Commit the installed-path fix, rebuild and reinstall the exact final installer,
+then rerun bounded resource, OCR, responsive, resume, uninstall, and private-release
 readback gates. Publish only if all pass.
 
 ## Retained v1.1.0 release record

@@ -56,6 +56,7 @@ struct OcrAssets {
 
 impl OcrState {
     pub fn from_directory(directory: PathBuf) -> Self {
+        let directory = command_compatible_path(directory);
         Self {
             inner: Arc::new(OcrWorker {
                 assets: OcrAssets {
@@ -307,6 +308,23 @@ pub fn ocr_directory(app: &tauri::App) -> Result<PathBuf, tauri::Error> {
     app.path().resolve("../ocr", BaseDirectory::Resource)
 }
 
+#[cfg(windows)]
+fn command_compatible_path(path: PathBuf) -> PathBuf {
+    let value = path.to_string_lossy();
+    if let Some(rest) = value.strip_prefix(r"\\?\UNC\") {
+        PathBuf::from(format!(r"\\{rest}"))
+    } else if let Some(rest) = value.strip_prefix(r"\\?\") {
+        PathBuf::from(rest)
+    } else {
+        path
+    }
+}
+
+#[cfg(not(windows))]
+fn command_compatible_path(path: PathBuf) -> PathBuf {
+    path
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -343,6 +361,19 @@ mod tests {
         assert_eq!(
             state.inner.check_cancelled(0).unwrap_err(),
             "OCR cancelled. The source PDF was not changed."
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn removes_windows_verbatim_prefix_for_tesseract() {
+        assert_eq!(
+            command_compatible_path(PathBuf::from(r"\\?\C:\SIREN\ocr")),
+            PathBuf::from(r"C:\SIREN\ocr")
+        );
+        assert_eq!(
+            command_compatible_path(PathBuf::from(r"\\?\UNC\server\share\ocr")),
+            PathBuf::from(r"\\server\share\ocr")
         );
     }
 
