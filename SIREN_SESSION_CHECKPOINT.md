@@ -1,6 +1,45 @@
-# SIREN v1.1.0 session checkpoint
+# SIREN v1.2.0 session checkpoint
 
-## Current repository state
+## v1.2.0 current phase
+
+- Authoritative starting branch: clean `main` at
+  `a1bc910b565f974b34205eac50ead8c3ed828eac`, synchronized with `origin/main`.
+- Published baseline: annotated `v1.1.0` peeling to
+  `416b2e430613642da244ac382a65d0ebf8315a30` in the private Gitea repository.
+- Versions before changes: application/package `1.1.0`; `kokoro-en` 0.1.5;
+  ONNX Runtime `ort`/`ort-sys` 2.0.0-rc.13; `pdf-extract` 0.12.0.
+- Bundled model before changes: `model_quantized.onnx`, 92,361,116 bytes,
+  SHA-256 `FBAE9257E1E05FFC727E951EF9B9C98418E6D79F1C9B6B13BD59F5C9028A1478`.
+
+## Fresh installed v1.1.0 baseline
+
+The exact published installer hash was verified, installed to an isolated
+temporary directory, exercised, and uninstalled successfully.
+
+- Process launch to WebView target: 1,571 ms.
+- Native model/session load: 2,447.5 ms in the existing local-model benchmark.
+- First 66-character synthesis: 6,540.3 ms for 4,500 ms audio, RTF 1.453;
+  total including model load 8,987.9 ms.
+- Warm 147-character synthesis: 9,010.0 ms for 9,975 ms audio, RTF 0.903.
+- Warm 288-character synthesis: 21,673.8 ms for 18,375 ms audio, RTF 1.180.
+- Installed first audible: 12,912 ms.
+- Installed 10-chunk continuity: 36 ms average transition, 62 ms worst,
+  zero observed underruns.
+- Stop response: 2 ms; no stale playback in the following 25 seconds.
+- CPU: 159.7% average and 311.3% peak of one logical-core equivalent.
+- Working set: 772.7 MiB average, 918.6 MiB peak.
+- Private memory: 944.4 MiB average, 1,359.0 MiB peak.
+
+## v1.2.0 exact next action
+
+Instrument the cold native path, benchmark only the practical ONNX/model/threading
+options exposed by the current stack, adopt only a continuity-safe Fast Start
+change, then reuse the existing PDF extraction path and add the minimum bundled
+local OCR renderer/Tesseract path.
+
+## Retained v1.1.0 release record
+
+## v1.1.0 repository state
 
 - Branch: `main`
 - Authoritative baseline: `868d8825804740505c70ba0481a75e4c2c7d0809`
@@ -147,7 +186,7 @@ core v1.1.0 reading path.
 - Installer: `SIREN_1.1.0_x64-setup.exe`, 76,400,879 bytes.
 - SHA-256: `53524D946EBCE4158986E9273F99CE8E71CEA81A3836312EDB450A9AF6E7BDE1`.
 
-## Exact next action
+## v1.1.0 completion boundary
 
 No release action remains. Resume only for a new explicitly authorized scope.
 
