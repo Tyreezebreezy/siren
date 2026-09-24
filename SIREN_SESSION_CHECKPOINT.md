@@ -149,11 +149,12 @@ core v1.1.0 reading path.
 
 ## Exact next action
 
-Commit this final validation evidence, create the annotated `v1.1.0` tag, push
-`main` and the tag to the existing private Gitea repository, create the private
-release with installer and checksum attachments, then download and rehash both.
+No release action remains. Resume only for a new explicitly authorized scope.
 
 ## Release state
 
-All local final gates pass. v1.1.0 is not yet tagged, pushed, or published.
-Existing v1.0.0 history and release assets remain untouched.
+Final `v1.1.0` is published to the existing private Gitea repository. The
+annotated tag resolves to `416b2e430613642da244ac382a65d0ebf8315a30`.
+Both release assets passed authenticated download and SHA-256 readback;
+unauthenticated repository, release, and asset requests returned 404. Existing
+v1.0.0 history and release assets remain untouched.

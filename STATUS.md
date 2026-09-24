@@ -85,6 +85,11 @@ and screenshot evidence instead.
 
 ## Release state
 
-All local release gates pass. The final annotated `v1.1.0` tag and private Gitea
-release have not yet been created; publication and authenticated/unauthenticated
-readback are the remaining actions.
+Published as a non-draft, non-prerelease `v1.1.0` release to the private
+`Tyreezebreezy/siren` repository at
+`[private-git-server]`.
+
+The annotated tag resolves to `416b2e430613642da244ac382a65d0ebf8315a30`.
+The installer and checksum were downloaded back through authenticated Gitea; the
+installer size and SHA-256 matched the local artifact. Unauthenticated requests
+to the repository, release, installer, and checksum all returned 404.
