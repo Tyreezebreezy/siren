@@ -18,7 +18,7 @@ inference. Two measured shortcuts were rejected:
 - The official q8f16 model candidate crashed the locked ONNX Runtime.
 
 The stable quantized model, native warmup, and bounded v1.1 queue therefore
-remain unchanged. Final installed continuity must pass before release.
+remain unchanged. Exact-final installed continuity passed before release.
 
 ## OCR implementation
 
@@ -47,35 +47,31 @@ remain unchanged. Final installed continuity must pass before release.
 - Trivy 0.72.0 with refreshed database: PASS, zero High/Critical npm or Cargo
   vulnerabilities and zero reported source secrets.
 - RustSec: zero vulnerabilities; inherited maintenance/unsoundness warnings only.
-- Gitleaks 8.30.1: PASS; exact candidate/path-fix patches and all 22 committed
-  revisions scanned with zero leaks.
+- Gitleaks 8.30.1: PASS; exact candidate/path-fix/evidence patches and all 23
+  prior committed revisions scanned with zero leaks.
 - Repository must remain private; no GitHub publication is authorized.
 
-## Installed pre-final evidence
+## Final installed evidence
 
-- Initial v1.2 installer launch to WebView: 1,763 ms.
-- First audible: 12,523 ms; 10/10 chunks; 30 ms average and 51 ms worst
+- Exact final installer launch to WebView: 1,165 ms.
+- First audible: 12,121 ms; 10/10 chunks; 26 ms average and 29 ms worst
   transitions; zero observed underruns.
 - Stop response: 2 ms; no stale playback during the following 25 seconds.
-- Active synthesis CPU: 198.4% average / 279.8% peak of one logical-core
+- Candidate active synthesis CPU: 198.4% average / 279.8% peak of one logical-core
   equivalent; working set 908.3 MiB average / 1,005.9 MiB peak; private memory
-  1,203.3 MiB average / 1,360.0 MiB peak.
-- The initial install exposed a Windows verbatim-prefix incompatibility in the
-  Tesseract tessdata argument. The prefix-only normalization and disk/UNC tests
-  are implemented; the fixed production installed payload passed real mixed-PDF
-  OCR, progress, cache reuse, eight-page cancellation, and unchanged-source hash.
-- Installed responsive/accessibility checks passed at 1366x768, 1440x900, and
-  1920x1080 with no overflow or unnamed controls. Restart restored page navigation,
+  1,203.3 MiB average / 1,360.0 MiB peak. The only later code change normalizes
+  the OCR resource path and does not touch the measured TTS pipeline.
+- The exact final installed payload passed real mixed-PDF OCR, progress, cache
+  reuse, eight-page cancellation, and unchanged-source SHA-256.
+- Responsive/accessibility checks passed at 1366x768, 1440x900, and 1920x1080
+  with no overflow or unnamed controls. Restart restored page navigation,
   `sentence-1`, and a paused Play state.
-- Final installer rebuild and exact reinstall/readback remain pending.
+- All 59 OCR files, the model, four voices, 14 PDFium license files, and the
+  third-party notice were present; every pinned runtime hash matched.
+- Isolated silent install and uninstall: PASS.
 
 ## Remaining final gates
 
-- Exact source commit.
-- NSIS build, isolated install, bundled-resource/license inspection, and uninstall.
-- Installed TTS first-audible/continuity/cancellation/resume measurements.
-- Installed scanned/mixed OCR, progress/cancel/cache/retry, responsive,
-  accessibility, and source-PDF hash checks.
 - Annotated tag, private Gitea release, asset upload/download hash readback, and
   authenticated/unauthenticated private-access checks.
 
@@ -91,6 +87,14 @@ remain unchanged. Final installed continuity must pass before release.
 
 `1.2.0`
 
+## Installer
+
+- Runtime commit: `7431acb058d50215663c291806e7dbf1cd2bc25b`
+- File: `SIREN_1.2.0_x64-setup.exe`
+- Size: `120,252,350` bytes
+- SHA-256: `57B0519DB18E00A05B84CD9B9BC076DADE4F4582B88D9996DF56C7D475BEB06C`
+- Signature: not signed
+
 ## Release state
 
-NOT RELEASED. Final publication is allowed only after every remaining gate passes.
+VALIDATED, NOT YET PUBLISHED. Only private Gitea publication/readback remains.

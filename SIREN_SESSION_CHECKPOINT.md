@@ -54,8 +54,9 @@ temporary directory, exercised, and uninstalled successfully.
   ignored real-OCR scanned/mixed integration PASS; TypeScript/Vite build PASS.
 - Release clippy PASS with warnings denied; npm audit and refreshed Trivy report
   zero vulnerabilities; Gitleaks reports zero leaks across the 43-file candidate,
-  the installed-path fix, and all 22 committed revisions. RustSec reports no
-  vulnerabilities and only inherited maintenance/unsoundness warnings.
+  the installed-path and evidence patches, and all 23 prior committed revisions.
+  RustSec reports no vulnerabilities and only inherited maintenance/unsoundness
+  warnings.
 - The first isolated v1.2 installer passed TTS (12,523 ms first audible, 30 ms
   average / 51 ms worst transition, zero observed underruns) but exposed an
   installed-only OCR failure: Tauri returned `\\?\` resource paths that Tesseract
@@ -67,9 +68,23 @@ temporary directory, exercised, and uninstalled successfully.
 
 ## v1.2.0 exact next action
 
-Commit the installed-path fix, rebuild and reinstall the exact final installer,
-then rerun bounded resource, OCR, responsive, resume, uninstall, and private-release
-readback gates. Publish only if all pass.
+Create the annotated `v1.2.0` tag, push `main` and the tag to the existing private
+Gitea repository, publish the installer and checksum, then perform authenticated
+download/hash and unauthenticated 404 readback. Stop after verified publication.
+
+## v1.2.0 final installed candidate
+
+- Exact runtime commit: `7431acb058d50215663c291806e7dbf1cd2bc25b`.
+- Installer: `SIREN_1.2.0_x64-setup.exe`, 120,252,350 bytes.
+- SHA-256: `57B0519DB18E00A05B84CD9B9BC076DADE4F4582B88D9996DF56C7D475BEB06C`.
+- Exact installed TTS: 12,121 ms first audible, 10/10 chunks, 26 ms average
+  and 29 ms worst transition, zero observed underruns; Stop 2 ms with no stale
+  playback during 25 seconds.
+- Exact installed OCR/UI: mixed native/scanned OCR, progress, cache, eight-page
+  cancellation, source hash preservation, 1366x768 / 1440x900 / 1920x1080
+  responsive and accessibility checks, and paused sentence/page restart resume PASS.
+- Installed resources: 59 OCR hashes, model, four voices, PDFium licenses, and
+  notices PASS. Isolated silent install/uninstall PASS.
 
 ## Retained v1.1.0 release record
 
