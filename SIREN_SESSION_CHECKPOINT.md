@@ -132,17 +132,28 @@ rendering passed with no captured console errors. The Browser/Computer Use image
 runtime remained unavailable due its Windows sandbox ACL helper, so CDP supplied
 the rendered DOM, interaction, and screenshot evidence.
 
-OCR remains deferred because the measured core speech path has not yet cleared
-its final installed-release continuity gate.
+OCR remains deferred to protect release quality; it is not needed for the healthy
+core v1.1.0 reading path.
+
+## Final installed-release gates
+
+- Exact runtime commit: `a3a3fe068a19faf6ee460416cb168a7ecab555b3`.
+- Validation, Rust tests, release clippy, npm audit, Trivy, and Gitleaks: PASS.
+- NSIS build and isolated silent install/uninstall: PASS.
+- Installed first audible: 12,749 ms; 17.2% lower than the v1.0.0 baseline.
+- Installed 10-chunk continuity: 30 ms average, 45 ms worst, zero observable underruns.
+- Stop: 1 ms; no playback during the next 25 seconds.
+- Relaunch: same 50-sentence document restored at sentence 11 of 50.
+- Installer: `SIREN_1.1.0_x64-setup.exe`, 76,400,879 bytes.
+- SHA-256: `53524D946EBCE4158986E9273F99CE8E71CEA81A3836312EDB450A9AF6E7BDE1`.
 
 ## Exact next action
 
-Run the complete validation and security gates, build the v1.1.0 installer, and
-smoke-test that exact installed build for playback continuity, cancellation, and
-resume. Promote to final only if those gates pass; otherwise publish rc.1 with the
-measured blocker.
+Commit this final validation evidence, create the annotated `v1.1.0` tag, push
+`main` and the tag to the existing private Gitea repository, create the private
+release with installer and checksum attachments, then download and rehash both.
 
 ## Release state
 
-v1.1.0 is not yet tagged, pushed, or published. Existing v1.0.0 history and
-release assets remain untouched.
+All local final gates pass. v1.1.0 is not yet tagged, pushed, or published.
+Existing v1.0.0 history and release assets remain untouched.
