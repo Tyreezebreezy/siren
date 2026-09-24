@@ -1,9 +1,10 @@
 # SIREN
 
-SIREN 1.1.0 is a local-first Windows text-to-speech reader built with Tauri 2,
+SIREN 1.2.0 is a local-first Windows text-to-speech reader built with Tauri 2,
 React, TypeScript, and Rust. It reads typed or pasted text plus TXT, Markdown,
-and text-based PDF documents with local Kokoro speech synthesis. No cloud TTS
-API, account, or network connection is required during normal use.
+and PDF documents with local Kokoro speech synthesis. Scanned and mixed PDFs
+can be recognized locally with bundled PDFium and Tesseract components. No cloud
+TTS or OCR API, account, or network connection is required during normal use.
 
 ## Features
 
@@ -17,6 +18,7 @@ API, account, or network connection is required during normal use.
 - Reading speed from 0.5× to 2.0×.
 - Dark, Light, and System themes.
 - Local settings, recent readings, document text, and sentence position resume.
+- On-demand local OCR for text-poor PDF pages, with progress and cancellation.
 - Keyboard controls outside text fields: Space to play/pause, Escape to stop,
   Left/Right to navigate, Ctrl+O to open a document, and Ctrl+, for Appearance.
 
@@ -25,10 +27,12 @@ API, account, or network connection is required during normal use.
 - `.txt`: Unicode plain text.
 - `.md`: headings, links, emphasis, lists, and common inline syntax are reduced
   to readable text.
-- `.pdf`: PDFs with an extractable text layer, up to 50 MB.
+- `.pdf`: text, scanned, and mixed PDFs up to 50 MB and 500 pages. Existing text
+  layers are preserved; OCR is offered only for text-poor pages.
 
-Scanned/image-only PDFs are not supported and show an explicit no-OCR message.
-DOCX, EPUB, OCR, voice cloning, cloud sync, and audio export are outside 1.1.
+OCR uses bundled English `tessdata_fast` and does not modify the source PDF.
+DOCX, EPUB, handwriting recognition, voice cloning, cloud sync, and audio export
+are outside 1.2.
 
 ## Development
 
@@ -61,6 +65,14 @@ official `onnx-community/Kokoro-82M-v1.0-ONNX` files at:
 installers bundle the model and voices as Tauri resources, so users do not
 manually provision assets.
 
+## Local OCR assets
+
+OCR runtime files are excluded from Git. Release builds stage the pinned PDFium
+and Tesseract files under `ocr/`; exact versions, sources, licenses, and SHA-256
+values are recorded in `THIRD_PARTY_NOTICES.md` and
+`docs/OCR_RUNTIME_SHA256.txt`. `SIREN_OCR_DIR` may override the directory in
+development. Production resolves only bundled resources.
+
 ## Packaging
 
 ```powershell
@@ -68,16 +80,20 @@ npm.cmd run tauri build
 ```
 
 The Windows NSIS installer is written under
-`src-tauri\target\release\bundle\nsis`. The model adds roughly 94 MB before
-installer compression. Release artifacts are build output and are not committed.
+`src-tauri\target\release\bundle\nsis`. Model and OCR runtimes add roughly
+270 MB before installer compression. Release artifacts are build output and are
+not committed.
 
 ## Persistence and privacy
 
 SIREN stores settings and up to eight recent reading bodies in the app webview's
 versioned local storage. Keeping the normalized text locally lets a reading
-resume even if its source file is later moved. The 1.1 storage ceiling is the
-webview's local quota; SQLite remains the upgrade path if book-scale libraries exceed
-it. Documents and synthesized audio are not sent to a remote service.
+resume even if its source file is later moved. OCR results are cached by PDF
+content hash plus OCR-engine identity, so reopening the same file does not repeat
+work. Appearance cleanup removes cached document text but not user source files.
+The storage ceiling is the webview's local quota; SQLite remains the upgrade path
+if book-scale libraries exceed it. Documents, OCR results, and synthesized audio
+are not sent to a remote service.
 
 ## Known limitations
 
@@ -86,7 +102,10 @@ it. Documents and synthesized audio are not sent to a remote service.
 - Adjacent sentences may share one audio chunk. Navigation and resume remain
   sentence-indexed; highlighting covers the active chunk because Kokoro does not
   provide sentence timestamps.
-- PDF extraction follows the embedded text order and does not perform OCR.
+- PDF extraction and OCR follow page order; complex multi-column layouts may be
+  read in an imperfect order. OCR currently uses the bundled English model.
+- Cancellation stops before the next OCR page; an in-flight page may finish
+  locally before temporary files are removed.
 - Pause resumes the current audio sample; Stop preserves the sentence position.
 - Sentence segmentation uses the native `Intl.Segmenter` plus common English
   abbreviation handling rather than a heavyweight NLP runtime.

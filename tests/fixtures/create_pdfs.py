@@ -5,6 +5,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from pypdf import PdfReader, PdfWriter
 
 
 ROOT = Path(__file__).resolve().parent
@@ -37,6 +38,7 @@ def create_text_pdf() -> None:
         bottomMargin=0.8 * inch,
         title="SIREN Text PDF Fixture",
         author="SIREN",
+        invariant=1,
     )
     document.build(story)
 
@@ -66,6 +68,7 @@ def create_scanned_pdf() -> None:
         bottomMargin=0,
         title="SIREN Scanned PDF Fixture",
         author="SIREN",
+        invariant=1,
     )
     from reportlab.platypus import Image as PdfImage
 
@@ -73,6 +76,16 @@ def create_scanned_pdf() -> None:
     image_path.unlink()
 
 
+def create_mixed_pdf() -> None:
+    writer = PdfWriter()
+    for path in (ROOT / "text-document.pdf", ROOT / "scanned-no-text.pdf"):
+        for page in PdfReader(path).pages:
+            writer.add_page(page)
+    with (ROOT / "mixed-text-scan.pdf").open("wb") as output:
+        writer.write(output)
+
+
 if __name__ == "__main__":
     create_text_pdf()
     create_scanned_pdf()
+    create_mixed_pdf()

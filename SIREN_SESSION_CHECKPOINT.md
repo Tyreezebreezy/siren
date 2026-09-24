@@ -30,12 +30,38 @@ temporary directory, exercised, and uninstalled successfully.
 - Working set: 772.7 MiB average, 918.6 MiB peak.
 - Private memory: 944.4 MiB average, 1,359.0 MiB peak.
 
+## v1.2.0 implementation state
+
+- Cold-path instrumentation measured roughly 35 ms of model I/O, 2.40 s of
+  engine/session setup, 2.56 s of phonemization, and 3.97 s of first inference.
+- Removing the v1.1 warmup regressed installed first-audible time to 15.9 s and
+  produced 1.2 s average / 2.8 s worst transitions, so it was reverted.
+- The official q8f16 candidate crashed the locked ONNX Runtime and was rejected.
+  v1.2 retains the stable quantized model and v1.1 playback queue.
+- Added local scanned/mixed-PDF OCR using the existing per-page PDF extraction,
+  PDFium 156.0.8066.0, Tesseract 5.4.0, and English `tessdata_fast` at pinned
+  revision `87416418657359cb625c412a48b6e1d6d41c29bd`.
+- OCR renders only text-poor pages, preserves native text, reports page progress,
+  supports cancellation between pages, removes temporary images, and never writes
+  the source PDF.
+- Added hash-and-engine-keyed OCR caching, cache cleanup, retry/failure states,
+  local/privacy messaging, and accessible dialog semantics.
+- Added scanned and mixed PDF fixtures plus Rust, persistence, and interaction
+  regression coverage.
+- Browser fallback QA passed 18 states across 1366x768, 1440x900, and 1920x1080
+  with no overflow, unnamed controls, or observed interaction failures.
+- Current source gates: 9 Node tests PASS; 5 Rust tests PASS with 3 ignored;
+  ignored real-OCR scanned/mixed integration PASS; TypeScript/Vite build PASS.
+- Release clippy PASS with warnings denied; npm audit and refreshed Trivy report
+  zero vulnerabilities; Gitleaks reports zero leaks across the 43-file candidate
+  and all 21 committed revisions. RustSec reports no vulnerabilities and only
+  inherited maintenance/unsoundness warnings.
+
 ## v1.2.0 exact next action
 
-Instrument the cold native path, benchmark only the practical ONNX/model/threading
-options exposed by the current stack, adopt only a continuity-safe Fast Start
-change, then reuse the existing PDF extraction path and add the minimum bundled
-local OCR renderer/Tesseract path.
+Commit the exact candidate, then run the release build, installed TTS/OCR,
+responsive, accessibility, persistence/resume, installer, and private-release
+readback gates. Publish only if all pass.
 
 ## Retained v1.1.0 release record
 

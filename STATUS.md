@@ -2,94 +2,77 @@
 
 ## Current state
 
-SIREN 1.1.0 is validated for final private release. It preserves the local-only
-Kokoro, document, and persistence boundaries from v1.0.0 while adding a focused
-Reader, Library/Continue surface, click-to-read navigation, manual-scroll yielding,
-Return to current, and persisted appearance controls.
+SIREN 1.2.0 is in final release validation. It preserves the v1.1.0 local
+Kokoro playback pipeline and adds explicit, fully local OCR for scanned and
+mixed PDFs. Existing text layers are preserved, source PDFs are never changed,
+and OCR work is cached by file hash plus pinned runtime identity.
 
-The installer was built from runtime commit
-`a3a3fe068a19faf6ee460416cb168a7ecab555b3` and passed an isolated install,
-native playback, cancellation, restart/resume, and silent uninstall smoke test.
+## Fast Start decision
 
-## Performance measurements
+Cold-path instrumentation measured roughly 35 ms of model I/O, 2.40 seconds of
+engine/session setup, 2.56 seconds of phonemization, and 3.97 seconds of first
+inference. Two measured shortcuts were rejected:
 
-The audited v1.0.0 baseline measured 15,389 ms to first audible playback, 45 ms
-average and 66 ms worst transitions across 10 chunks, with no underruns. Baseline
-synthesis used 161.9% of one logical core equivalent, averaged 739.1 MiB working
-set and 828.7 MiB private memory, and restored sentence 50 of 50 after relaunch.
+- Removing the v1.1 warmup regressed installed first-audible time to 15.9
+  seconds and produced 1.2-second average / 2.8-second worst transitions.
+- The official q8f16 model candidate crashed the locked ONNX Runtime.
 
-The exact installed v1.1.0 release played the same 50-sentence fixture through
-10 chunks with these observed results:
+The stable quantized model, native warmup, and bounded v1.1 queue therefore
+remain unchanged. Final installed continuity must pass before release.
 
-- First audible playback: 12,749 ms, 17.2% lower than the v1.0.0 baseline.
-- Average transition: 30 ms.
-- Worst transition: 45 ms.
-- Observable underruns: 0.
-- End state: sentence 50 of 50 with `End of document.`
-- Stop UI transition: 1 ms.
-- Playback after Stop: none during a 25-second observation window.
-- Relaunch resume: the same 50-sentence document at sentence 11 of 50.
+## OCR implementation
 
-A smaller adaptive first-chunk experiment reached 5.96-9.64 second first-audible
-times but caused audible underruns and was fully reverted. The final release keeps
-the proven paragraph-bounded queue and moves its single warmup to native startup.
+- PDFium 156.0.8066.0 renders only text-poor pages at a bounded 2400-pixel width.
+- Tesseract 5.4.0 uses pinned English `tessdata_fast` locally and sequentially.
+- A 50 MB / 500-page boundary, fixed executable paths, progress, cancellation,
+  temporary-file cleanup, stale-result rejection, retry, and failure states are
+  implemented.
+- The source PDF is read-only; only normalized extracted/OCR text is persisted.
+- Exact runtime provenance and SHA-256 values are recorded in
+  `THIRD_PARTY_NOTICES.md` and `docs/OCR_RUNTIME_SHA256.txt`.
 
-## Responsive and interaction QA
-
-Native WebView2 checks at 1366x768, 1440x900, and 1920x1080 found no page-level
-overflow. Click-to-read, click-to-resume during playback, appearance settings,
-manual-scroll yielding, Return to current, Library navigation, and recent-reading
-rendering passed with no captured console errors. Screenshots are preserved in
-the session output directory for all three sizes.
-
-The in-app Browser/Computer Use image runtime was unavailable because its Windows
-sandbox helper failed. WebView2 CDP supplied the rendered DOM, interaction, audio,
-and screenshot evidence instead.
-
-## Tests
+## Completed source gates
 
 - `scripts\validate.ps1`: PASS (`SIREN_VALIDATION=PASS`).
-- Prettier, TypeScript, 8 Node tests, and Vite production build: PASS.
-- `cargo test --locked`: PASS (4 passed; 1 local-model benchmark ignored).
+- Prettier, TypeScript, 9 Node tests, and Vite production build: PASS.
+- `cargo test --locked`: PASS (5 passed; 3 asset benchmarks/integrations ignored).
+- Real scanned/mixed-PDF OCR integration: PASS.
 - `cargo clippy --locked --release --all-targets -- -D warnings`: PASS.
-- `npm.cmd run tauri build`: PASS; NSIS installer produced.
-- Isolated silent install and uninstall: PASS.
+- Browser interaction/responsive QA: PASS across 18 states at 1366x768,
+  1440x900, and 1920x1080, with no page overflow or unnamed controls.
 
 ## Security gates
 
 - `npm audit --audit-level=high`: PASS, zero vulnerabilities.
 - Trivy 0.72.0 with refreshed database: PASS, zero High/Critical npm or Cargo
-  findings and zero reported source secrets.
-- Gitleaks 8.30.1: PASS, 18 committed revisions and the exact staged v1.1.0
-  patch scanned with zero leaks.
-- Repository remains private; no GitHub publication is authorized.
+  vulnerabilities and zero reported source secrets.
+- RustSec: zero vulnerabilities; inherited maintenance/unsoundness warnings only.
+- Gitleaks 8.30.1: PASS; 43 staged candidate files and all 21 committed
+  revisions scanned with zero leaks.
+- Repository must remain private; no GitHub publication is authorized.
+
+## Remaining final gates
+
+- Exact source commit.
+- NSIS build, isolated install, bundled-resource/license inspection, and uninstall.
+- Installed TTS first-audible/continuity/cancellation/resume measurements.
+- Installed scanned/mixed OCR, progress/cancel/cache/retry, responsive,
+  accessibility, and source-PDF hash checks.
+- Annotated tag, private Gitea release, asset upload/download hash readback, and
+  authenticated/unauthenticated private-access checks.
 
 ## Known limitations
 
 - The Windows installer is not code-signed.
-- First speech still takes several seconds on CPU; the measured improvement is
-  meaningful but does not meet the research pack's aspirational near-instant goal.
+- First speech still takes several seconds on CPU; no unstable shortcut was kept.
 - Highlighting is speech-chunk accurate because Kokoro has no sentence timestamps.
-- OCR, DOCX, EPUB, cloud sync, voice cloning, and audio export remain outside 1.1.0.
+- OCR is English-only and may misread handwriting or complex multi-column layouts.
+- OCR cancellation takes effect between pages; an in-flight page may finish locally.
 
-## Final version
+## Target version
 
-`1.1.0`
-
-## Installer
-
-- File: `SIREN_1.1.0_x64-setup.exe`
-- Size: `76,400,879` bytes
-- SHA-256: `53524D946EBCE4158986E9273F99CE8E71CEA81A3836312EDB450A9AF6E7BDE1`
-- Signature: not signed
+`1.2.0`
 
 ## Release state
 
-Published as a non-draft, non-prerelease `v1.1.0` release to the private
-`Tyreezebreezy/siren` repository at
-`[private-git-server]`.
-
-The annotated tag resolves to `416b2e430613642da244ac382a65d0ebf8315a30`.
-The installer and checksum were downloaded back through authenticated Gitea; the
-installer size and SHA-256 matched the local artifact. Unauthenticated requests
-to the repository, release, installer, and checksum all returned 404.
+NOT RELEASED. Final publication is allowed only after every remaining gate passes.

@@ -23,6 +23,8 @@ export type LibraryDocument = {
   text: string;
   position: number;
   lastOpenedAt: string;
+  pages?: string[];
+  ocr?: boolean;
 };
 
 export type PersistedState = {
@@ -128,6 +130,10 @@ function isLibraryDocument(value: unknown): value is LibraryDocument {
     typeof document.text === "string" &&
     typeof document.position === "number" &&
     typeof document.lastOpenedAt === "string" &&
+    (document.pages === undefined ||
+      (Array.isArray(document.pages) &&
+        document.pages.every((page) => typeof page === "string"))) &&
+    (document.ocr === undefined || typeof document.ocr === "boolean") &&
     (document.kind === "text" ||
       document.kind === "txt" ||
       document.kind === "markdown" ||

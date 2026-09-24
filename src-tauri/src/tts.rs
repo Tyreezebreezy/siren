@@ -73,8 +73,8 @@ impl TtsState {
         }
         let mut engine = self.engine.lock().await;
         load_engine(&mut engine, &self.assets).await?;
-        // Run one tiny synthesis so the first real request does not pay the
-        // one-time ONNX session initialization cost after the user presses Play.
+        // The real phrase also warms first-use phonemization and inference paths
+        // that Kokoro's short constructor probes do not cover.
         engine
             .as_ref()
             .expect("engine initialized above")
@@ -258,5 +258,73 @@ mod tests {
                 .expect("local benchmark synthesis should succeed");
             assert!(wav.len() > 44);
         }
+    }
+
+    #[test]
+    #[ignore = "requires local Kokoro model assets"]
+    fn benchmarks_cold_path() {
+        let directory = default_model_directory();
+        let assets = ModelAssets {
+            model: directory.join("model_quantized.onnx"),
+            voices: directory.join("voices"),
+        };
+
+        let started = Instant::now();
+        let model = fs::read(&assets.model).expect("model should be readable");
+        eprintln!(
+            "[SIREN COLD] model_read_ms={:.1} bytes={}",
+            started.elapsed().as_secs_f64() * 1_000.0,
+            model.len()
+        );
+        drop(model);
+
+        let started = Instant::now();
+        let voice_bytes = fs::read_dir(&assets.voices)
+            .expect("voice directory should be readable")
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry.path().extension().and_then(|value| value.to_str()) == Some("bin")
+            })
+            .map(|entry| {
+                fs::read(entry.path())
+                    .expect("voice should be readable")
+                    .len()
+            })
+            .sum::<usize>();
+        eprintln!(
+            "[SIREN COLD] voice_read_ms={:.1} bytes={}",
+            started.elapsed().as_secs_f64() * 1_000.0,
+            voice_bytes
+        );
+
+        let started = Instant::now();
+        let engine =
+            tauri::async_runtime::block_on(TtsEngine::load(&assets)).expect("engine should load");
+        eprintln!(
+            "[SIREN COLD] engine_session_ms={:.1}",
+            started.elapsed().as_secs_f64() * 1_000.0
+        );
+
+        let text = "SIREN measures local speech before changing the playback pipeline.";
+        let started = Instant::now();
+        let phonemes = kokoro_en::g2p(text, false).expect("phonemization should succeed");
+        let phoneme_ms = started.elapsed().as_secs_f64() * 1_000.0;
+        let started = Instant::now();
+        let tokens = kokoro_en::get_token_ids(&phonemes, false);
+        eprintln!(
+            "[SIREN COLD] phonemize_ms={:.1} tokenize_ms={:.1} tokens={}",
+            phoneme_ms,
+            started.elapsed().as_secs_f64() * 1_000.0,
+            tokens.len()
+        );
+
+        let started = Instant::now();
+        let samples = tauri::async_runtime::block_on(engine.synthesize(text, "af_heart", 1.0))
+            .expect("first synthesis should succeed");
+        eprintln!(
+            "[SIREN COLD] first_real_inference_ms={:.1} audio_ms={:.1}",
+            started.elapsed().as_secs_f64() * 1_000.0,
+            samples.len() as f64 / SAMPLE_RATE as f64 * 1_000.0
+        );
     }
 }

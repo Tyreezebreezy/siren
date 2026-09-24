@@ -1,0 +1,506 @@
+[
+  {
+    "size": "1366x768",
+    "state": "library",
+    "fit": {
+      "viewport": [1366, 768],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1366,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 0,
+        "right": 1366,
+        "bottom": 768
+      },
+      "playback": {
+        "top": 0,
+        "left": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1366x768",
+    "state": "reader",
+    "fit": {
+      "viewport": [1366, 768],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1366,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 64,
+        "right": 1366,
+        "bottom": 650.40625
+      },
+      "playback": {
+        "top": 650.40625,
+        "left": 0,
+        "right": 1366,
+        "bottom": 768
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1366x768",
+    "state": "playing",
+    "fit": {
+      "viewport": [1366, 768],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1366,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 64,
+        "right": 1366,
+        "bottom": 650.40625
+      },
+      "playback": {
+        "top": 650.40625,
+        "left": 0,
+        "right": 1366,
+        "bottom": 768
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1366x768",
+    "state": "appearance",
+    "fit": {
+      "viewport": [1366, 768],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1366,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 64,
+        "right": 1366,
+        "bottom": 650.40625
+      },
+      "playback": {
+        "top": 650.40625,
+        "left": 0,
+        "right": 1366,
+        "bottom": 768
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1366x768",
+    "state": "ocr-prompt",
+    "fit": {
+      "viewport": [1366, 768],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1366,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 64,
+        "right": 1366,
+        "bottom": 650.40625
+      },
+      "playback": {
+        "top": 650.40625,
+        "left": 0,
+        "right": 1366,
+        "bottom": 768
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1366x768",
+    "state": "ocr-progress",
+    "fit": {
+      "viewport": [1366, 768],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1366,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 64,
+        "right": 1366,
+        "bottom": 650.40625
+      },
+      "playback": {
+        "top": 650.40625,
+        "left": 0,
+        "right": 1366,
+        "bottom": 768
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1440x900",
+    "state": "library",
+    "fit": {
+      "viewport": [1440, 900],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1440,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 0,
+        "right": 1440,
+        "bottom": 900
+      },
+      "playback": {
+        "top": 0,
+        "left": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1440x900",
+    "state": "reader",
+    "fit": {
+      "viewport": [1440, 900],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1440,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 64,
+        "right": 1440,
+        "bottom": 782.40625
+      },
+      "playback": {
+        "top": 782.40625,
+        "left": 0,
+        "right": 1440,
+        "bottom": 900
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1440x900",
+    "state": "playing",
+    "fit": {
+      "viewport": [1440, 900],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1440,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 64,
+        "right": 1440,
+        "bottom": 782.40625
+      },
+      "playback": {
+        "top": 782.40625,
+        "left": 0,
+        "right": 1440,
+        "bottom": 900
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1440x900",
+    "state": "appearance",
+    "fit": {
+      "viewport": [1440, 900],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1440,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 64,
+        "right": 1440,
+        "bottom": 782.40625
+      },
+      "playback": {
+        "top": 782.40625,
+        "left": 0,
+        "right": 1440,
+        "bottom": 900
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1440x900",
+    "state": "ocr-prompt",
+    "fit": {
+      "viewport": [1440, 900],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1440,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 64,
+        "right": 1440,
+        "bottom": 782.40625
+      },
+      "playback": {
+        "top": 782.40625,
+        "left": 0,
+        "right": 1440,
+        "bottom": 900
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1440x900",
+    "state": "ocr-progress",
+    "fit": {
+      "viewport": [1440, 900],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1440,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 64,
+        "right": 1440,
+        "bottom": 782.40625
+      },
+      "playback": {
+        "top": 782.40625,
+        "left": 0,
+        "right": 1440,
+        "bottom": 900
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1920x1080",
+    "state": "library",
+    "fit": {
+      "viewport": [1920, 1080],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1920,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 0,
+        "right": 1920,
+        "bottom": 1080
+      },
+      "playback": {
+        "top": 0,
+        "left": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1920x1080",
+    "state": "reader",
+    "fit": {
+      "viewport": [1920, 1080],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1920,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 272,
+        "right": 1920,
+        "bottom": 962.40625
+      },
+      "playback": {
+        "top": 962.40625,
+        "left": 0,
+        "right": 1920,
+        "bottom": 1080
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1920x1080",
+    "state": "playing",
+    "fit": {
+      "viewport": [1920, 1080],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1920,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 272,
+        "right": 1920,
+        "bottom": 962.40625
+      },
+      "playback": {
+        "top": 962.40625,
+        "left": 0,
+        "right": 1920,
+        "bottom": 1080
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1920x1080",
+    "state": "appearance",
+    "fit": {
+      "viewport": [1920, 1080],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1920,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 272,
+        "right": 1920,
+        "bottom": 962.40625
+      },
+      "playback": {
+        "top": 962.40625,
+        "left": 0,
+        "right": 1920,
+        "bottom": 1080
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1920x1080",
+    "state": "ocr-prompt",
+    "fit": {
+      "viewport": [1920, 1080],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1920,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 272,
+        "right": 1920,
+        "bottom": 962.40625
+      },
+      "playback": {
+        "top": 962.40625,
+        "left": 0,
+        "right": 1920,
+        "bottom": 1080
+      },
+      "unnamed": []
+    }
+  },
+  {
+    "size": "1920x1080",
+    "state": "ocr-progress",
+    "fit": {
+      "viewport": [1920, 1080],
+      "overflowX": false,
+      "overflowY": false,
+      "header": {
+        "top": 0,
+        "left": 0,
+        "right": 1920,
+        "bottom": 76
+      },
+      "reader": {
+        "top": 76,
+        "left": 272,
+        "right": 1920,
+        "bottom": 962.40625
+      },
+      "playback": {
+        "top": 962.40625,
+        "left": 0,
+        "right": 1920,
+        "bottom": 1080
+      },
+      "unnamed": []
+    }
+  }
+]

@@ -49,13 +49,26 @@ invalidate the old session. Voice and speed changes use the same invalidation
 path. Kokoro does not expose sentence timestamps, so all sentences in the active
 chunk are highlighted together rather than using fake intra-chunk timing.
 
-## Documents
+## Documents and OCR
 
 The webview decodes TXT and Markdown as Unicode. Markdown syntax is reduced with
 small deterministic rules rather than a parser dependency. PDF bytes cross raw
-IPC and are checked for size and signature before `pdf-extract` reads the text
-layer. Empty, corrupt, encrypted, and image-only PDFs return user-facing errors;
-OCR is intentionally absent.
+IPC and are checked for size, signature, and a 500-page ceiling before
+`pdf-extract` reads each text layer. Pages with fewer than 20 alphanumeric
+characters are treated as text-poor; existing page text is preserved.
+
+OCR is explicit and local. After confirmation, Rust loads the bundled PDFium DLL,
+renders only text-poor pages sequentially to temporary JPEGs at a target width of
+2400 pixels, and invokes the bundled Tesseract executable directly with fixed
+English `tessdata_fast` arguments. SIREN never writes the source PDF. A generation
+token cancels future pages and prevents stale results from replacing a newer
+document. Temporary images are removed when work completes, fails, or is canceled.
+Only one OCR operation owns the PDFium runtime at a time; this deliberately favors
+bounded memory and simple cancellation over parallel throughput.
+
+Successful PDF text is cached in versioned local storage under a SHA-256 of the
+source bytes plus the OCR engine/model/render identity. Cache cleanup reuses the
+existing recent-document deletion path.
 
 ## Persistence
 

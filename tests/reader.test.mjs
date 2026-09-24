@@ -52,6 +52,27 @@ test("navigation and persisted settings stay within safe bounds", () => {
   );
 });
 
+test("persisted OCR pages remain local and backward compatible", () => {
+  const document = {
+    id: "pdf:fixture:ocr-tesseract-5.4-engfast-7d4322bd-2400-v1",
+    name: "Scanned fixture",
+    kind: "pdf",
+    text: "Recognized locally.",
+    pages: ["Recognized locally."],
+    ocr: true,
+    position: 0,
+    lastOpenedAt: "2026-09-24T00:00:00.000Z",
+  };
+  const state = normalizeState({
+    version: 1,
+    settings: {},
+    documents: [document],
+    activeId: document.id,
+  });
+  assert.deepEqual(state.documents[0].pages, document.pages);
+  assert.equal(state.documents[0].ocr, true);
+});
+
 test("long documents parse incrementally into the expected queue", () => {
   const text = readFileSync(
     new URL("fixtures/long.txt", import.meta.url),

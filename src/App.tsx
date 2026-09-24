@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import {
   type ChangeEvent,
   type ReactNode,
@@ -32,6 +33,30 @@ type PlaybackState =
 type TtsStatus = {
   ready: boolean;
   voices: string[];
+};
+
+type PdfInspection = {
+  pages: string[];
+  ocrPages: number[];
+};
+
+type OcrDocument = {
+  pages: string[];
+  ocrPageCount: number;
+};
+
+type OcrProgress = {
+  currentPage: number;
+  totalPages: number;
+  phase: string;
+};
+
+type PendingPdf = {
+  id: string;
+  fileName: string;
+  name: string;
+  pageCount: number;
+  ocrPageCount: number;
 };
 
 type SpeechUnitState =
@@ -82,7 +107,13 @@ function App() {
     ready: false,
     voices: ["af_heart"],
   });
+  const [pendingPdf, setPendingPdf] = useState<PendingPdf | null>(null);
+  const [ocrProgress, setOcrProgress] = useState<OcrProgress | null>(null);
+  const [ocrRunning, setOcrRunning] = useState(false);
+  const [ocrError, setOcrError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingPdfBytesRef = useRef<Uint8Array | null>(null);
+  const ocrRequestRef = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const bufferRef = useRef<SessionBuffer<BufferedSpeech> | null>(null);
@@ -110,6 +141,21 @@ function App() {
   const reader = useMemo(
     () => parseReaderDocument(activeDocument?.text ?? ""),
     [activeDocument?.text],
+  );
+  const contents = useMemo(
+    () =>
+      activeDocument?.pages
+        ? pageContents(activeDocument.pages)
+        : reader.paragraphs.map((paragraph) => ({
+            index: paragraph.index,
+            start: paragraph.sentences[0]?.index ?? 0,
+            label: `Passage ${paragraph.index + 1}`,
+            preview: paragraph.sentences
+              .map(({ text }) => text)
+              .join(" ")
+              .slice(0, 58),
+          })),
+    [activeDocument?.pages, reader.paragraphs],
   );
   const currentIndex = Math.min(
     activeDocument?.position ?? 0,
@@ -156,6 +202,20 @@ function App() {
       .catch(() => {
         // Browser-only visual QA has no Tauri command bridge.
       });
+  }, []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen<OcrProgress>("ocr-progress", ({ payload }) =>
+      setOcrProgress(payload),
+    )
+      .then((stop) => {
+        unlisten = stop;
+      })
+      .catch(() => {
+        // Browser-only visual QA has no Tauri event bridge.
+      });
+    return () => unlisten?.();
   }, []);
 
   useEffect(() => {
@@ -618,6 +678,8 @@ function App() {
       const extension = file.name.split(".").pop()?.toLowerCase();
       let kind: DocumentKind;
       let text: string;
+      let id = `${extension}:${file.name}:${file.size}:${file.lastModified}`;
+      let pages: string[] | undefined;
       if (extension === "txt") {
         kind = "txt";
         text = await file.text();
@@ -629,10 +691,32 @@ function App() {
           throw new Error("PDF files must be 50 MB or smaller.");
         }
         kind = "pdf";
-        text = await invoke<string>(
-          "extract_pdf",
-          new Uint8Array(await file.arrayBuffer()),
-        );
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        id = await pdfCacheId(bytes);
+        const cached = state.documents.find((document) => document.id === id);
+        if (cached) {
+          openDocument(cached);
+          setMessage(`Opened cached text for ${file.name}.`);
+          return;
+        }
+        const inspection = await invoke<PdfInspection>("inspect_pdf", bytes);
+        pages = inspection.pages;
+        if (inspection.ocrPages.length > 0) {
+          pendingPdfBytesRef.current = bytes;
+          setPendingPdf({
+            id,
+            fileName: file.name,
+            name: documentTitle(file.name),
+            pageCount: pages.length,
+            ocrPageCount: inspection.ocrPages.length,
+          });
+          setOcrProgress(null);
+          setOcrError("");
+          setPlayback("idle");
+          setMessage("OCR approval required.");
+          return;
+        }
+        text = readablePages(pages);
       } else {
         throw new Error("SIREN supports TXT, Markdown, and PDF files.");
       }
@@ -641,12 +725,13 @@ function App() {
         throw new Error("This document does not contain readable text.");
       }
       const document: LibraryDocument = {
-        id: `${kind}:${file.name}:${file.size}:${file.lastModified}`,
+        id,
         name: documentTitle(file.name),
         kind,
         text: text.trim(),
         position: 0,
         lastOpenedAt: new Date().toISOString(),
+        pages,
       };
       addDocument(document);
       setEditing(false);
@@ -655,6 +740,77 @@ function App() {
       setPlayback("error");
       setMessage(userMessage(error));
     }
+  }
+
+  async function runOcr() {
+    if (!pendingPdf || !pendingPdfBytesRef.current || ocrRunning) return;
+    const request = ++ocrRequestRef.current;
+    setOcrRunning(true);
+    setOcrError("");
+    setOcrProgress({
+      currentPage: 0,
+      totalPages: pendingPdf.pageCount,
+      phase: "Starting local OCR",
+    });
+    setMessage(`Reading ${pendingPdf.fileName} locally…`);
+    try {
+      const result = await invoke<OcrDocument>(
+        "ocr_pdf",
+        pendingPdfBytesRef.current,
+      );
+      if (request !== ocrRequestRef.current) return;
+      const text = readablePages(result.pages);
+      if (parseReaderDocument(text).sentences.length === 0) {
+        throw new Error("OCR finished, but no readable text was found.");
+      }
+      addDocument({
+        id: pendingPdf.id,
+        name: pendingPdf.name,
+        kind: "pdf",
+        text,
+        pages: result.pages,
+        ocr: result.ocrPageCount > 0,
+        position: 0,
+        lastOpenedAt: new Date().toISOString(),
+      });
+      setEditing(false);
+      setPendingPdf(null);
+      pendingPdfBytesRef.current = null;
+      setMessage(`Opened ${pendingPdf.fileName} with local OCR.`);
+    } catch (error) {
+      if (request !== ocrRequestRef.current) return;
+      setOcrError(userMessage(error));
+      setMessage("OCR did not complete. Retry or cancel.");
+    } finally {
+      if (request === ocrRequestRef.current) setOcrRunning(false);
+    }
+  }
+
+  function cancelOcr() {
+    ocrRequestRef.current += 1;
+    if (ocrRunning) void invoke("cancel_ocr").catch(() => undefined);
+    setOcrRunning(false);
+    setPendingPdf(null);
+    setOcrProgress(null);
+    setOcrError("");
+    pendingPdfBytesRef.current = null;
+    setMessage("OCR cancelled. The source PDF was not changed.");
+  }
+
+  function clearOcrCache() {
+    stopPlayback();
+    setState((current) => {
+      const removedActive = current.documents.some(
+        (document) => document.id === current.activeId && document.ocr,
+      );
+      return {
+        ...current,
+        activeId: removedActive ? null : current.activeId,
+        documents: current.documents.filter((document) => !document.ocr),
+      };
+    });
+    if (activeDocument?.ocr) setSurface("library");
+    setMessage("Cached OCR text was cleared. Source PDFs were not changed.");
   }
 
   useEffect(() => {
@@ -668,6 +824,10 @@ function App() {
       if (command && event.key === ",") {
         event.preventDefault();
         setAppearanceOpen((open) => !open);
+        return;
+      }
+      if (event.key === "Escape" && pendingPdf) {
+        cancelOcr();
         return;
       }
       if (event.key === "Escape" && appearanceOpen) {
@@ -762,6 +922,7 @@ function App() {
             ref={fileInputRef}
             className="visually-hidden"
             type="file"
+            aria-label="Choose document file"
             accept=".txt,.md,.markdown,.pdf,text/plain,text/markdown,application/pdf"
             onChange={importDocument}
           />
@@ -854,6 +1015,15 @@ function App() {
                 <span aria-hidden="true" />
                 Highlight current text
               </label>
+              {state.documents.some((document) => document.ocr) ? (
+                <button
+                  className="clear-ocr"
+                  type="button"
+                  onClick={clearOcrCache}
+                >
+                  Clear cached OCR text
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -871,30 +1041,25 @@ function App() {
               Open a document to view its passages.
             </p>
           ) : (
-            reader.paragraphs.map((paragraph) => {
-              const start = paragraph.sentences[0]?.index ?? 0;
-              const active = paragraph.sentences.some(
-                ({ index }) => index === currentIndex,
-              );
-              const preview = paragraph.sentences
-                .map(({ text }) => text)
-                .join(" ")
-                .slice(0, 58);
+            contents.map((entry) => {
+              const next =
+                contents[entry.index + 1]?.start ?? reader.sentences.length;
+              const active = currentIndex >= entry.start && currentIndex < next;
               return (
                 <button
                   className={active ? "active" : ""}
                   type="button"
-                  key={paragraph.index}
+                  key={entry.index}
                   aria-current={active ? "true" : undefined}
-                  onClick={() => jumpToSentence(start)}
-                  aria-label={`Passage ${paragraph.index + 1}: ${preview}`}
+                  onClick={() => jumpToSentence(entry.start)}
+                  aria-label={`${entry.label}: ${entry.preview}`}
                 >
                   <Icon name="document" />
                   <span>
-                    <strong>Passage {paragraph.index + 1}</strong>
+                    <strong>{entry.label}</strong>
                     <small>
-                      {preview}
-                      {preview.length === 58 ? "…" : ""}
+                      {entry.preview}
+                      {entry.preview.length === 58 ? "…" : ""}
                     </small>
                   </span>
                 </button>
@@ -1056,9 +1221,7 @@ function App() {
         ) : (
           <section className="empty-reader">
             <h2>Your local reading space</h2>
-            <p>
-              Type text or open a TXT, Markdown, or text-based PDF document.
-            </p>
+            <p>Type text or open a TXT, Markdown, or PDF document.</p>
             <button type="button" onClick={beginNewText}>
               Start with text
             </button>
@@ -1158,6 +1321,58 @@ function App() {
           </label>
         </div>
       </footer>
+      {pendingPdf ? (
+        <div className="modal-backdrop">
+          <section
+            className="ocr-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ocr-heading"
+            aria-describedby="ocr-description"
+          >
+            <p className="eyebrow">Private · Local · Offline</p>
+            <h2 id="ocr-heading">
+              {ocrRunning
+                ? "Reading scanned pages"
+                : pendingPdf.ocrPageCount === pendingPdf.pageCount
+                  ? "Scanned PDF detected"
+                  : "Some pages need OCR"}
+            </h2>
+            <p id="ocr-description">
+              {ocrRunning
+                ? `${ocrProgress?.phase ?? "Starting local OCR"}. Page ${ocrProgress?.currentPage ?? 0} of ${ocrProgress?.totalPages ?? pendingPdf.pageCount}.`
+                : `${pendingPdf.ocrPageCount} of ${pendingPdf.pageCount} pages need local English OCR. SIREN will not upload or modify the source PDF.`}
+            </p>
+            {ocrRunning ? (
+              <progress
+                aria-label="OCR progress"
+                max={ocrProgress?.totalPages ?? pendingPdf.pageCount}
+                value={ocrProgress?.currentPage ?? 0}
+              />
+            ) : null}
+            {ocrError ? (
+              <p className="ocr-error" role="alert">
+                {ocrError}
+              </p>
+            ) : null}
+            <div className="ocr-actions">
+              <button type="button" onClick={cancelOcr}>
+                Cancel
+              </button>
+              {!ocrRunning ? (
+                <button
+                  className="primary"
+                  type="button"
+                  autoFocus
+                  onClick={runOcr}
+                >
+                  {ocrError ? "Retry OCR" : "Run local OCR"}
+                </button>
+              ) : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1168,6 +1383,39 @@ function debugTts(details: Record<string, unknown>) {
 
 function userMessage(error: unknown) {
   return String(error).replace(/^Error:\s*/, "");
+}
+
+function readablePages(pages: string[]) {
+  return pages
+    .filter((page) => page.trim())
+    .join("\n\n")
+    .trim();
+}
+
+async function pdfCacheId(bytes: Uint8Array) {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const hash = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  return `pdf:${hash}:ocr-tesseract-5.4-engfast-7d4322bd-2400-v1`;
+}
+
+function pageContents(pages: string[]) {
+  let start = 0;
+  return pages.map((page, index) => {
+    const parsed = parseReaderDocument(page);
+    const entry = {
+      index,
+      start,
+      label: `Page ${index + 1}`,
+      preview: parsed.sentences
+        .map(({ text }) => text)
+        .join(" ")
+        .slice(0, 58),
+    };
+    start += parsed.sentences.length;
+    return entry;
+  });
 }
 
 function ControlButton({

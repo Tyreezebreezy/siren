@@ -1,3 +1,4 @@
+mod ocr;
 mod tts;
 
 use serde::Serialize;
@@ -31,30 +32,28 @@ async fn tts_synthesize(
 }
 
 #[tauri::command]
-fn extract_pdf(request: Request<'_>) -> Result<String, String> {
+fn inspect_pdf(request: Request<'_>) -> Result<ocr::PdfInspection, String> {
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err("SIREN received an invalid PDF payload.".into());
     };
-    extract_pdf_bytes(bytes)
+    ocr::inspect_pdf_bytes(bytes)
 }
 
-fn extract_pdf_bytes(bytes: &[u8]) -> Result<String, String> {
-    if bytes.len() > 50 * 1024 * 1024 {
-        return Err("PDF files must be 50 MB or smaller.".into());
-    }
-    if !bytes.starts_with(b"%PDF-") {
-        return Err("This file is not a valid PDF.".into());
-    }
-    let text = pdf_extract::extract_text_from_mem(bytes).map_err(|_| {
-        "SIREN could not read this PDF. It may be corrupt or encrypted.".to_string()
-    })?;
-    let text = text.trim();
-    if text.is_empty() {
-        return Err(
-            "No readable text was found in this PDF. OCR is not supported in SIREN.".into(),
-        );
-    }
-    Ok(text.to_owned())
+#[tauri::command]
+async fn ocr_pdf(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, ocr::OcrState>,
+    request: Request<'_>,
+) -> Result<ocr::OcrDocument, String> {
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err("SIREN received an invalid PDF payload.".into());
+    };
+    state.recognize(bytes.to_vec(), app).await
+}
+
+#[tauri::command]
+fn cancel_ocr(state: tauri::State<'_, ocr::OcrState>) {
+    state.cancel();
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -63,6 +62,8 @@ pub fn run() {
         .setup(|app| {
             let model_directory = tts::model_directory(app)?;
             app.manage(tts::TtsState::from_model_directory(model_directory));
+            let ocr_directory = ocr::ocr_directory(app)?;
+            app.manage(ocr::OcrState::from_directory(ocr_directory));
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 if let Err(_error) = app_handle.state::<tts::TtsState>().warmup().await {
@@ -73,37 +74,12 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            extract_pdf,
+            cancel_ocr,
+            inspect_pdf,
+            ocr_pdf,
             tts_status,
             tts_synthesize
         ])
         .run(tauri::generate_context!())
         .expect("error while running the Tauri application");
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn rejects_non_pdf_bytes() {
-        assert_eq!(
-            extract_pdf_bytes(b"not a pdf").unwrap_err(),
-            "This file is not a valid PDF."
-        );
-    }
-
-    #[test]
-    fn extracts_text_pdf_and_rejects_scanned_pdf() {
-        let text_pdf = include_bytes!("../../tests/fixtures/text-document.pdf");
-        assert!(extract_pdf_bytes(text_pdf)
-            .unwrap()
-            .contains("This PDF contains a real text layer."));
-
-        let scanned_pdf = include_bytes!("../../tests/fixtures/scanned-no-text.pdf");
-        assert_eq!(
-            extract_pdf_bytes(scanned_pdf).unwrap_err(),
-            "No readable text was found in this PDF. OCR is not supported in SIREN."
-        );
-    }
 }

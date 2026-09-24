@@ -18,6 +18,9 @@
   --accent: #e9574f;
   --accent-strong: #c93d37;
   --accent-soft: #ffd9d3;
+  --control-bg: #b93430;
+  --control-text: #ffffff;
+  --danger: #a12622;
   --focus: #2f6fed;
   --shadow: 0 22px 60px rgb(46 40 31 / 12%);
 }
@@ -36,6 +39,9 @@
   --accent: #f05b52;
   --accent-strong: #ff7167;
   --accent-soft: #ffc1b7;
+  --control-bg: #ff8b83;
+  --control-text: #0b1622;
+  --danger: #ffaaa3;
   --focus: #ff7d73;
   --shadow: 0 26px 70px rgb(2 9 15 / 24%);
 }
@@ -484,8 +490,8 @@ svg {
   padding: 0.8rem 1.1rem;
   border: 0;
   border-radius: 0.5rem;
-  color: #fff;
-  background: var(--accent-strong);
+  color: var(--control-text);
+  background: var(--control-bg);
   cursor: pointer;
   font-size: 0.86rem;
   font-weight: 750;
@@ -555,12 +561,12 @@ svg {
 
 .transport .primary-control {
   min-width: 4.9rem;
-  border-color: var(--accent);
-  color: #fff;
-  background: var(--accent);
+  border-color: var(--control-bg);
+  color: var(--control-text);
+  background: var(--control-bg);
   box-shadow:
     0 0 0 2px var(--chrome),
-    0 0 0 4px var(--accent);
+    0 0 0 4px var(--control-bg);
 }
 
 .transport .primary-control:disabled {
@@ -703,6 +709,82 @@ svg {
 .toggle input:focus-visible + span {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
+}
+
+.clear-ocr {
+  min-height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: var(--text);
+  background: var(--chrome-raised);
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.modal-backdrop {
+  position: fixed;
+  z-index: 20;
+  display: grid;
+  inset: 0;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgb(3 11 18 / 62%);
+}
+
+.ocr-dialog {
+  width: min(31rem, 100%);
+  padding: clamp(1.5rem, 4vw, 2.25rem);
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  color: var(--text);
+  background: var(--chrome);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 35%);
+}
+
+.ocr-dialog h2 {
+  margin: 0.35rem 0 0.75rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.75rem;
+}
+
+.ocr-dialog > p:not(.eyebrow) {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.ocr-dialog progress {
+  width: 100%;
+  height: 0.75rem;
+  accent-color: var(--accent);
+}
+
+.ocr-dialog .ocr-error {
+  color: var(--danger);
+  font-weight: 650;
+}
+
+.ocr-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin-top: 1.5rem;
+}
+
+.ocr-actions button {
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: var(--text);
+  background: var(--chrome-raised);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ocr-actions .primary {
+  border-color: var(--control-bg);
+  color: var(--control-text);
+  background: var(--control-bg);
 }
 
 @media (max-width: 1440px) and (min-width: 761px) {
@@ -979,9 +1061,9 @@ svg {
 }
 
 .library-actions button:first-child {
-  border-color: var(--accent-strong);
-  color: #fff;
-  background: var(--accent-strong);
+  border-color: var(--control-bg);
+  color: var(--control-text);
+  background: var(--control-bg);
 }
 
 .continue-card {
@@ -1134,8 +1216,8 @@ svg {
   padding: 0.65rem 0.9rem;
   border: 1px solid var(--accent);
   border-radius: 999px;
-  color: #fff;
-  background: var(--accent-strong);
+  color: var(--control-text);
+  background: var(--control-bg);
   box-shadow: 0 6px 20px rgb(2 9 15 / 18%);
   cursor: pointer;
   font-size: 0.8rem;
