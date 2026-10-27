@@ -22,7 +22,7 @@ The screenshots in this README use a short fictional passage, not a real documen
 - **Platform:** Windows only. Installers are built locally with `npm run tauri build`; release artifacts are not committed.
 - **Not included:** DOCX, EPUB, handwriting recognition, voice cloning, cloud sync and audio export.
 - **License:** the source is publicly viewable, but I haven't granted an open-source license, so all rights are reserved for now. Third-party components keep their own licenses and are listed in `THIRD_PARTY_NOTICES.md`: the Kokoro 82M model and voices are Apache-2.0, as are Tesseract and the `tessdata_fast` English data.
-- **Model files are not in this repo.** The voice model, voices, PDFium and Tesseract are excluded from Git (see below), so a fresh clone builds and tests but won't speak until you drop the model files in `models/`.
+- **Model and OCR files are not in this repo.** The voice model, voices, PDFium and Tesseract are excluded from Git (see below). The frontend checks run on a fresh clone, but the Rust/Tauri build also expects the `models/` and `ocr/` resource paths from `src-tauri/tauri.conf.json` to exist, and the app won't speak until the real model files are in `models/`.
 
 ## Features
 
