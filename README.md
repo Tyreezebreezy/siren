@@ -12,8 +12,8 @@ or OCR service involved. It is built with Tauri 2, React, TypeScript and Rust.
 
 The screenshots in this README use a short fictional passage, not a real document.
 
-| Library | Appearance | Local OCR prompt for a scanned PDF |
-| --- | --- | --- |
+| Library                                                  | Appearance                                                     | Local OCR prompt for a scanned PDF                             |
+| -------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------- |
 | ![Library](docs/screenshots/v1.2.0/library-1440x900.png) | ![Appearance](docs/screenshots/v1.2.0/appearance-1440x900.png) | ![OCR prompt](docs/screenshots/v1.2.0/ocr-prompt-1440x900.png) |
 
 ## Current status
@@ -21,7 +21,8 @@ The screenshots in this README use a short fictional passage, not a real documen
 - **Released:** 1.2.0 (the `v1.2.0` tag), which added local OCR for scanned and mixed PDFs. Screenshots are the release's own committed captures.
 - **Platform:** Windows only. Installers are built locally with `npm run tauri build`; release artifacts are not committed.
 - **Not included:** DOCX, EPUB, handwriting recognition, voice cloning, cloud sync and audio export.
-- **License:** none chosen yet; all rights reserved for now. Third-party components are listed in `THIRD_PARTY_NOTICES.md`.
+- **License:** the source is publicly viewable, but I haven't granted an open-source license, so all rights are reserved for now. Third-party components keep their own licenses and are listed in `THIRD_PARTY_NOTICES.md`: the Kokoro 82M model and voices are Apache-2.0, as are Tesseract and the `tessdata_fast` English data.
+- **Model files are not in this repo.** The voice model, voices, PDFium and Tesseract are excluded from Git (see below), so a fresh clone builds and tests but won't speak until you drop the model files in `models/`.
 
 ## Features
 
