@@ -1,10 +1,27 @@
 # SIREN
 
-SIREN 1.2.0 is a local-first Windows text-to-speech reader built with Tauri 2,
-React, TypeScript, and Rust. It reads typed or pasted text plus TXT, Markdown,
-and PDF documents with local Kokoro speech synthesis. Scanned and mixed PDFs
-can be recognized locally with bundled PDFium and Tesseract components. No cloud
-TTS or OCR API, account, or network connection is required during normal use.
+A local read-aloud app for Windows. Open a document, press Play, and it reads
+to you with an on-device voice.
+
+I built SIREN for the times I would rather listen to a document than stare at
+another page. Everything runs on the machine: the voice is the Kokoro 82M
+model, scanned PDFs are recognized locally, and there is no account, cloud TTS
+or OCR service involved. It is built with Tauri 2, React, TypeScript and Rust.
+
+![SIREN reading a document, current sentence highlighted](docs/screenshots/v1.2.0/reader-playing-1440x900.png)
+
+The screenshots in this README use a short fictional passage, not a real document.
+
+| Library | Appearance | Local OCR prompt for a scanned PDF |
+| --- | --- | --- |
+| ![Library](docs/screenshots/v1.2.0/library-1440x900.png) | ![Appearance](docs/screenshots/v1.2.0/appearance-1440x900.png) | ![OCR prompt](docs/screenshots/v1.2.0/ocr-prompt-1440x900.png) |
+
+## Current status
+
+- **Released:** 1.2.0 (the `v1.2.0` tag), which added local OCR for scanned and mixed PDFs. Screenshots are the release's own committed captures.
+- **Platform:** Windows only. Installers are built locally with `npm run tauri build`; release artifacts are not committed.
+- **Not included:** DOCX, EPUB, handwriting recognition, voice cloning, cloud sync and audio export.
+- **License:** none chosen yet; all rights reserved for now. Third-party components are listed in `THIRD_PARTY_NOTICES.md`.
 
 ## Features
 
